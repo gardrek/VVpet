@@ -16,12 +16,12 @@ function game:draw()
 	end
 end
 
-function game:input(button, released)
-	if button == 2 then
-		if released then
-			bgcolor = 0
-		else
+function game:event(type, data)
+	if type == 'button' and data.button == '2' then
+		if data.down then
 			bgcolor = 1
+		else
+			bgcolor = 0
 		end
 	end
 end

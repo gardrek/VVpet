@@ -7,8 +7,6 @@ function love.load()
 	-- Love set-up stuff
 	io.stdout:setvbuf('no') -- enable normal use of the print() command
 	love.graphics.setDefaultFilter('nearest', 'nearest', 0)
-	-- love.graphics.setNewFont(16) -- for on-screen debug
-	-- love.graphics.setColor(255,255,255,255) -- should be unnecessary as long as I never change the drawing color
 
 	emu.cozy = 2
 
@@ -48,9 +46,10 @@ function love.load()
 		['1'] = {'1', 'z', 'kp1'}, -- screen button 1, to the left
 		['2'] = {'2', 'x', 'kp2'}, -- screen button 2, in the center
 		['3'] = {'3', 'c', 'kp3'}, -- screen button 3, to the right
+		--['4'] = {'4'}, -- screen button 4, even further to the right on larger units
 		-- action buttons are assigned a letter, starting with a for the most-used button
 		-- NOTE: The standard vPET does not have action buttons
-		a = {'v', 'n'},
+		a = {'n'},
 		b = {'b'},
 		-- direction buttons:
 		left = {'a', 'left', 'kp4'},
@@ -116,26 +115,6 @@ function love.load()
 		end
 	end
 
-	-- font library
-	local font
-	success, font = vpet:loadscript('font.lua')
-	if success then
-		print('Font loaded')
-	else
-		print('Font failed to load')
-		print(font)
-		success, font = vpet:loadscript('font.lua')
-		if success then
-			print('Fallback font loaded')
-		else
-			print('Fallback font failed to load')
-			print(font)
-			font = nil
-		end
-	end
-
-	vpet.font = font
-
 	---- graphics stuff
 	-- Loading the console information (rn just a picture)
 	vpet.console = {
@@ -180,16 +159,12 @@ function love.draw()
 			if cart.draw and type(cart.draw)=='function' then
 				cart:draw()
 			end
-			--vpet.env.cls()
-			for i=0,7 do
-				--print(vpet.font:getLine(34,i))
-			end
 		end
 	)
 	--love.graphics.clear(119,119,119)
 	love.graphics.draw(emu.bg.image, emu.bg.x, emu.bg.y, 0, emu.bg.scale, emu.bg.scale)
 	love.graphics.draw(vpet.console.image, emu.center.x + vpet.console.x*vpet.scale, emu.center.y + vpet.console.y*vpet.scale, 0, vpet.scale)
-	love.graphics.setColor({0xdd,0xee,0xcc})
+	--love.graphics.setColor(0xdd,0xee,0xcc)
 	love.graphics.draw(vpet.screen, emu.center.x + vpet.x*vpet.scale, emu.center.y + vpet.y*vpet.scale, 0, vpet.scale)
 	love.graphics.setColor(255,255,255,255)
 end
@@ -237,16 +212,16 @@ end
 
 function vpet.keyevent(key, released)
 	local pressed=false
-	for i,v in ipairs(vpet.buttons) do
-		pressed=false
-		for j,bind in ipairs(v) do
-			if bind==key then
-				pressed=true
+	if cart.event and type(cart.event)=='function' then -- TODO: refactor this to be a check into a table of declared functions
+		for k,v in pairs(vpet.inputmap) do
+			pressed=false
+			for i,bind in ipairs(v) do
+				if bind==key then
+					pressed=true
+				end
 			end
-		end
-		if pressed then
-			if cart.input and type(cart.input)=='function' then
-				cart:input(i, released)
+			if pressed then
+				cart:event('button', {button = k, up = released, down = not released})
 			end
 		end
 	end

@@ -44,28 +44,29 @@ function game:update(dt)
 	drawcursor = cursor_blink < 0.4
 end
 
-function game:input(button, released)
-	if not released then
+function game:event(type, data)
+	if type == 'button' and data.down then
+		local button = data.button
 		cursor_blink = 0
-		if button == 2 then
+		if button == '2' then -- play
 			if board[cursor.y + 1][cursor.x + 1]==0 then
 				board[cursor.y + 1][cursor.x + 1] = to_move + 1
 				to_move = 1 - to_move
 			end
-		elseif button == 1 then
+		elseif button == '1' then -- reset
 			board = {
 				{0, 0, 0},
 				{0, 0, 0},
 				{0, 0, 0},
 			}
 			to_move = 0
-		elseif button==4 then
+		elseif button == 'left' then
 			cursor.x = (cursor.x - 1) % 3
-		elseif button==5 then
+		elseif button == 'right' then
 			cursor.x = (cursor.x + 1) % 3
-		elseif button==6 then
+		elseif button == 'up' then
 			cursor.y = (cursor.y - 1) % 3
-		elseif button==7 then
+		elseif button == 'down' then
 			cursor.y = (cursor.y + 1) % 3
 		end
 	end

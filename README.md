@@ -14,31 +14,29 @@ TODO: Explain Hardware Files
 
 Instead of using global space, as is more typical of fantasy consoles, callbacks are implemented through a table, as methods of that table.
 
+Each application's Lua script returns a table with the callback functions included as methods.
+
+Below is a small sample program illustrating this. Note the `table:method` syntax, which implies the `self` variable/argument.
+
 	local game = {}
 
-	`function game:draw()`
+	local bgcolor = 0
+
+	function game:draw()
 		cls(bgcolor)
-		n = n + 1
-		for yi = 0, 15 do
-			for xi = 0, 15 do
-				drawsprite(xi, yi, xi*4 - math.floor(math.sin((n - yi * 4)/17) * 4), yi * 4)
-				--drawsprite(xi,yi,xi*4,yi*4)
-			end
-		end
 	end
 
-	function game:input(button, released)
-		if button == 2 then
-			if released then
-				bgcolor = 0
-			else
+	function game:event(type, data)
+		if type == 'button' and data.button == '2' then
+			if data.down then
 				bgcolor = 1
+			else
+				bgcolor = 0
 			end
 		end
 	end
 
 	return game
-
 
 ## API
 
