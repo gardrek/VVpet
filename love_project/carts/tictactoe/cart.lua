@@ -1,4 +1,6 @@
-local game = {}
+local game = {
+	spritefile = 'sprites.png',
+}
 
 local draw = {
 	x = 14,
@@ -22,8 +24,6 @@ local cursor_blink = 0
 
 local to_move = 0
 
-local t = 0
-
 function game:draw()
 	cls(0)
 	drawspriteblock(2 * to_move + 11, 0, 2, 2, draw.x - 4, draw.y - 12)
@@ -39,7 +39,6 @@ function game:draw()
 end
 
 function game:update(dt)
-	t = t + dt
 	cursor_blink = (cursor_blink + dt) % 0.8
 	drawcursor = cursor_blink < 0.4
 end

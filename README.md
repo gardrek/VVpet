@@ -18,25 +18,25 @@ Each application's Lua script returns a table with the callback functions includ
 
 Below is a small sample program illustrating this. Note the `table:method` syntax, which implies the `self` variable/argument.
 
-	local game = {}
+  local game = {}
 
-	local bgcolor = 0
+  local bgcolor = 0
 
-	function game:draw()
-		cls(bgcolor)
-	end
+  function game:draw()
+    cls(bgcolor)
+  end
 
-	function game:event(type, data)
-		if type == 'button' and data.button == '2' then
-			if data.down then
-				bgcolor = 1
-			else
-				bgcolor = 0
-			end
-		end
-	end
+  function game:event(type, data)
+    if type == 'button' and data.button == '2' then
+      if data.down then
+        bgcolor = 1
+      else
+        bgcolor = 0
+      end
+    end
+  end
 
-	return game
+  return game
 
 ## API
 

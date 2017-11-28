@@ -1,53 +1,43 @@
 local emu = {}
 local vpet = {}
-emu.center = {}
-vpet.env = {}
+local api = {}
 
 function love.load()
 	-- Love set-up stuff
 	io.stdout:setvbuf('no') -- enable normal use of the print() command
 	love.graphics.setDefaultFilter('nearest', 'nearest', 0)
 
-	emu.cozy = 2
-
-	-- vpet stuff
-	vpet.screen = love.graphics.newCanvas(64,64, 'rgba4', 0)
-	vpet.color={
-		[0]=
-		{255,255,255}, -- {222,238,214,255}, -- white (paper)
-		{  0,  0,  0}, -- { 20, 12, 28,255}, -- black (ink)
-		{170,  0,170}, -- no change
-		{  0,170,170}, -- invert
+	-- set up cart environment
+	vpet.env = {}
+	local env_globals={
+		-- Functions and variables
+		--'garbagecollect','dofile','_G','getfenv','load','loadfile',
+		--'loadstring','setfenv','rawequal','rawget','rawset',
+		'assert','error','getmetatable','ipairs',
+		'next','pairs','pcall','print',
+		'select','tonumber','tostring','type',
+		'unpack','_VERSION','xpcall',
+		-- Libraries
+		'math',
 	}
-	vpet.buttons={
-		-- system buttons
-		-- these buttons are handled differently by the "BIOS"
-		[-2] = {'backspace', 'tab'}, -- back
-		[-1] = {'escape'}, -- home
-		[0] = {'f10'}, -- reset pinhole
-		-- acton buttons
-		{'1', 'z', 'kp1'}, -- screen button 1, to the left
-		{'2', 'x', 'kp2'}, -- screen button 2, in the center
-		{'3', 'c', 'kp3'}, -- screen button 3, to the right
-		-- direction buttons:
-		{'a', 'left', 'kp4'},
-		{'d', 'right', 'kp6'},
-		{'w', 'up', 'kp8'},
-		{'s', 'down', 'kp5'},
-	}
+	for i,v in ipairs(env_globals) do
+		vpet.env[v]=_G[v]
+	end
+	for k,v in pairs(api) do
+		vpet.env[k]=v
+	end
+	vpet.env._G = vpet.env
 
 	vpet.inputmap = {
-		-- system buttons
-		-- these buttons are handled differently when an app is run from another app
+		-- system buttons - these buttons are handled differently when an app is run from inside another app
 		back = {'backspace', 'tab'}, -- use to return to a previous screen or cancel something. TODO: hold for x seconds to send home key press, hold for x + y seconds to force-close app
-		home = {'escape', 'r'}, -- TODO: pressing home pauses/exits the app, returning to the calling app. long pres force-quits the app. If the app is the top-level app, a force quit will restart the app
+		home = {'escape', 'r'}, -- TODO: pressing home pauses/exits the app, returning to the calling app. long press force-quits the app. If the app is the top-level app, a force quit will restart the app
 		reset = {'f10'}, -- TODO: reset pinhole, clears all user data
 		-- screen buttons - numbered left to right
-		['1'] = {'1', 'z', 'kp1'}, -- screen button 1, to the left
-		['2'] = {'2', 'x', 'kp2'}, -- screen button 2, in the center
-		['3'] = {'3', 'c', 'kp3'}, -- screen button 3, to the right
-		--['4'] = {'4'}, -- screen button 4, even further to the right on larger units
-		-- action buttons are assigned a letter, starting with a for the most-used button
+		['1'] = {'1', 'z', 'kp1'},
+		['2'] = {'2', 'x', 'kp2'},
+		['3'] = {'3', 'c', 'kp3'},
+		-- action buttons are assigned a letter, starting with 'a' for the most-used button
 		-- NOTE: The standard vPET does not have action buttons
 		a = {'n'},
 		b = {'b'},
@@ -58,42 +48,33 @@ function love.load()
 		down = {'s', 'down', 'kp5'},
 	}
 
+	-- load hardware
+	vpet.hw = vpet:loadhardware('hw/vpet64/')
+
 	-- console constants
-	vpet.SPRITEW=4
-	vpet.SPRITEH=4
+	vpet.SPRITEW = 4
+	vpet.SPRITEH = 4
 	vpet.screenw = 64
 	vpet.screenh = 64
 	vpet.minw = 80
 	vpet.minh = 120
-	vpet.scale = 4
 	vpet.x, vpet.y = -32, -48
+
+	-- vpet stuff
+	vpet.colors={
+		[0]=
+		{255,255,255}, -- white (paper)
+		{  0,  0,  0}, -- black (ink)
+		--{255,  0,255}, -- [PLANNED] violet, no change (transparent)
+		--{  0,255,255}, -- [PLANNED] turquoise, invert
+	}
+
+	vpet.screen = love.graphics.newCanvas(64,64, 'rgba4', 0)
 	vpet.screen:renderTo(
 		function()
-			love.graphics.clear(vpet.color[0])
+			api.cls()
 		end
 	)
- 
-	-- set up cart environment
-	local env_globals={
-		-- Functions and variables
-		--'garbagecollect','dofile','_G','getfenv','load','loadfile','loadstring','setfenv','rawequal','rawget','rawset',
-		'assert','error','getmetatable','ipairs','next','pairs','pcall','print','select',
-		'tonumber','tostring','type','unpack','_VERSION','xpcall',
-		-- Libraries
-		'math',
-	}
-	for i,v in ipairs(env_globals) do
-		vpet.env[v]=_G[v]
-	end
-	vpet.env._G = vpet.env
-
-	-- a list of callback functions for carts. could be handy?
-	local cart_returns={
-		-- functions
-		'update','draw','input',
-		-- files
-		'bgimage','spritesfile',
-	}
 
 	local cartfolder = 'carts/'
 	--cartfolder='rom/'
@@ -123,6 +104,9 @@ function love.load()
 	vpet.console.x = -math.floor(vpet.console.image:getWidth()/2)
 	vpet.console.y = -math.floor(vpet.console.image:getHeight()/2)
 
+	emu.cozy = 2
+	emu.center = {}
+	emu.scale = 4
 	emu.bg = {}
 	emu.bg.image = love.graphics.newImage('bg.jpg')
 	emu.bg.x, emu.bg.y = 0, 0
@@ -161,11 +145,10 @@ function love.draw()
 			end
 		end
 	)
-	--love.graphics.clear(119,119,119)
 	love.graphics.draw(emu.bg.image, emu.bg.x, emu.bg.y, 0, emu.bg.scale, emu.bg.scale)
-	love.graphics.draw(vpet.console.image, emu.center.x + vpet.console.x*vpet.scale, emu.center.y + vpet.console.y*vpet.scale, 0, vpet.scale)
-	--love.graphics.setColor(0xdd,0xee,0xcc)
-	love.graphics.draw(vpet.screen, emu.center.x + vpet.x*vpet.scale, emu.center.y + vpet.y*vpet.scale, 0, vpet.scale)
+	love.graphics.draw(vpet.console.image, emu.center.x + vpet.console.x*emu.scale, emu.center.y + vpet.console.y*emu.scale, 0, emu.scale)
+	love.graphics.setColor(0xdd,0xee,0xcc)
+	love.graphics.draw(vpet.screen, emu.center.x + vpet.x*emu.scale, emu.center.y + vpet.y*emu.scale, 0, emu.scale)
 	love.graphics.setColor(255,255,255,255)
 end
 
@@ -179,8 +162,8 @@ function love.keypressed(key, scancode, isrepeat)
 			love.resize()
 		elseif key == '0' then
 			emu.cozy = emu.cozy + 1
-			if emu.cozy > 8 then
-				emu.cozy = 8
+			if emu.cozy > 7 then
+				emu.cozy = 7
 			end
 			love.resize()
 		end
@@ -207,7 +190,7 @@ function love.resize(w, h)
 	emu.bg.x = emu.center.x - (emu.bg.image:getWidth()/2 * emu.bg.scale)
 	emu.bg.y = emu.center.y - (emu.bg.image:getHeight()/2 * emu.bg.scale)
 	local scale = math.min(math.floor(w / vpet.minw), math.floor(h / vpet.minh))
-	vpet.scale = math.max(scale - emu.cozy, 1)
+	emu.scale = math.max(scale - emu.cozy, 1)
 end
 
 function vpet.keyevent(key, released)
@@ -229,10 +212,6 @@ end
 
 function vpet:initsprites(sprites)
 	local raw = sprites:getData()
-	local validColors={
-		{0,0,0},
-		{255,255,255},
-	}
 	local hadInvalidPixels=false
 	raw:mapPixel(
 		function(x, y, r, g, b, a)
@@ -240,14 +219,14 @@ function vpet:initsprites(sprites)
 			local valid=false
 			local pix
 			if a==0 then
-				r,g,b = 0,0,0
+				r,g,b = 0, 0, 0
 			else
-				r=r>127 and 255 or 0
-				g=g>127 and 255 or 0
-				b=b>127 and 255 or 0
+				r = r > 127 and 255 or 0
+				g = g > 127 and 255 or 0
+				b = b > 127 and 255 or 0
 			end
-			for i,v in pairs(validColors) do
-				if v[1]==r and v[2]==b and v[3]==g then
+			for i,v in pairs(self.colors) do
+				if v[1]==r and v[2]==g and v[3]==b then
 					valid=true
 					break
 				end
@@ -269,7 +248,7 @@ function vpet:initsprites(sprites)
 end
 
 function vpet:loadscript(script)
-	local _LuaBCHeader = string.char(0x1B).."LJ"
+	local _LuaBCHeader = string.char(0x1B)..'LJ'
 	local file = io.open(script,'r')
 	if file then
 		if file:read(3)==_LuaBCHeader then
@@ -278,38 +257,41 @@ function vpet:loadscript(script)
 		end
 		file:close()
 	else
-		print('script '..script..' failed to load: file notr opened')
+		print('script '..script..' failed to load: file not opened')
 		return false
 	end
-	local f,error = loadfile(script)
-	if not f then print('script '..script..' failed to load: script error') return false,error end
+	local f, error = loadfile(script)
+	if not f then print('script '..script..' failed to load: script error') return false, error end
 	setfenv(f, self.env)
 	return pcall(f)
 end
 
-function vpet:loadcart(cart)
-	--
+function vpet:loadhardware(dir)
+	local success, hw, error = vpet:loadscript(dir..'/hw.lua')
+	if success then
+		hw.dir = dir
+		return hw
+	else
+		print('hardware in '..dir..'failed to load')
+		return false
+	end
 end
 
 -- Following are the functions which can be called from within the script
+-- TODO: make these be api.* and have the love.load function import them to env under their own table (e.g: vpet)
+-- TODO: also, make them better
 
 -- TODO: Make this use stencils for fourthcolor
-function vpet.env.drawsprite(sx,sy,x,y)
+function api.drawsprite(sx,sy,x,y)
 	vpet.spriteQuad:setViewport(sx*vpet.SPRITEW,sy*vpet.SPRITEH,vpet.SPRITEW,vpet.SPRITEH)
 	love.graphics.draw(vpet.sprites,vpet.spriteQuad,x,y)
 end
 
-function vpet.env.cls(c)
+function api.cls(c)
 	c=c or 0
 	c=math.floor(c)%2
-	love.graphics.clear(vpet.color[c])
+	love.graphics.clear(vpet.colors[c])
 end
-
-vpet.env.os={
-	time=function()
-		
-	end
-}
 
 -- useful functions
 
