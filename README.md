@@ -8,7 +8,7 @@ These must be in the same folder.
 
 In future versions, other files to be loaded will be specified in the lua script.
 
-TODO: Hardware Files
+TODO: Explain Hardware Files
 
 ## Callbacks
 
