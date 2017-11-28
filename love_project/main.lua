@@ -1,6 +1,7 @@
-local vpet={}
-local center={}
-vpet.env={}
+local emu = {}
+local vpet = {}
+emu.center = {}
+vpet.env = {}
 
 function love.load()
 	-- Love set-up stuff
@@ -8,8 +9,8 @@ function love.load()
 	love.graphics.setDefaultFilter('nearest', 'nearest', 0)
 	-- love.graphics.setNewFont(16) -- for on-screen debug
 	-- love.graphics.setColor(255,255,255,255) -- should be unnecessary as long as I never change the drawing color
-	center.x = math.floor(love.graphics.getWidth()/2)
-	center.y = math.floor(love.graphics.getHeight()/2)
+
+	emu.cozy = 2
 
 	-- vpet stuff
 	vpet.screen = love.graphics.newCanvas(64,64, 'rgba4', 0)
@@ -37,20 +38,42 @@ function love.load()
 		{'s', 'down', 'kp5'},
 	}
 
+	vpet.inputmap = {
+		-- system buttons
+		-- these buttons are handled differently when an app is run from another app
+		back = {'backspace', 'tab'}, -- use to return to a previous screen or cancel something. TODO: hold for x seconds to send home key press, hold for x + y seconds to force-close app
+		home = {'escape', 'r'}, -- TODO: pressing home pauses/exits the app, returning to the calling app. long pres force-quits the app. If the app is the top-level app, a force quit will restart the app
+		reset = {'f10'}, -- TODO: reset pinhole, clears all user data
+		-- screen buttons - numbered left to right
+		['1'] = {'1', 'z', 'kp1'}, -- screen button 1, to the left
+		['2'] = {'2', 'x', 'kp2'}, -- screen button 2, in the center
+		['3'] = {'3', 'c', 'kp3'}, -- screen button 3, to the right
+		-- action buttons are assigned a letter, starting with a for the most-used button
+		-- NOTE: The standard vPET does not have action buttons
+		a = {'v', 'n'},
+		b = {'b'},
+		-- direction buttons:
+		left = {'a', 'left', 'kp4'},
+		right = {'d', 'right', 'kp6'},
+		up = {'w', 'up', 'kp8'},
+		down = {'s', 'down', 'kp5'},
+	}
+
 	-- console constants
 	vpet.SPRITEW=4
 	vpet.SPRITEH=4
-	vpet.w = 64
-	vpet.h = 64
+	vpet.screenw = 64
+	vpet.screenh = 64
+	vpet.minw = 80
+	vpet.minh = 120
 	vpet.scale = 4
-	--vpet.x,vpet.y = math.floor(love.graphics.getWidth()/2-vpet.w*vpet.scale/2),math.floor(love.graphics.getHeight()/8*3-vpet.h*vpet.scale/2)
 	vpet.x, vpet.y = -32, -48
 	vpet.screen:renderTo(
 		function()
 			love.graphics.clear(vpet.color[0])
 		end
 	)
-
+ 
 	-- set up cart environment
 	local env_globals={
 		-- Functions and variables
@@ -74,7 +97,7 @@ function love.load()
 	}
 
 	local cartfolder = 'carts/'
-	--cartfolder='defaultcart/'
+	--cartfolder='rom/'
 	cartfolder = cartfolder..'tictactoe/'
 
 	-- load the cart script
@@ -85,7 +108,7 @@ function love.load()
 	else
 		print(cart)
 		cart = {}
-		success,cart = vpet:loadscript('defaultcart/cart.lua')
+		success,cart = vpet:loadscript('rom/splash.lua')
 		if success then
 			print('Using default cart...')
 		else
@@ -116,26 +139,32 @@ function love.load()
 	---- graphics stuff
 	-- Loading the console information (rn just a picture)
 	vpet.console = {
-		image = love.graphics.newImage('vpet64.png'),
+		image = love.graphics.newImage('hw/vpet64/base.png'),
 	}
 	vpet.console.x = -math.floor(vpet.console.image:getWidth()/2)
 	vpet.console.y = -math.floor(vpet.console.image:getHeight()/2)
 
-	vpet.bg = love.graphics.newImage('bg.jpg')
-	bgscale = math.max(love.graphics.getWidth() / vpet.bg:getWidth(), love.graphics.getHeight() / vpet.bg:getHeight())
+	emu.bg = {}
+	emu.bg.image = love.graphics.newImage('bg.jpg')
+	emu.bg.x, emu.bg.y = 0, 0
 
 	-- load the game's sprites
 	local spritefile
 	spritefile = cart.spritefile and cartfolder..cart.spritefile or cartfolder..'/sprites.png'
 	if not file_exists(spritefile) then
-		spritefile = 'defaultcart/sprites.png'
+		spritefile = 'rom/nocart.png'
 	end
 	if file_exists(spritefile) then
 		vpet.sprites = vpet:initsprites(love.graphics.newImage(spritefile))
 	else
 		vpet.sprites = vpet:initsprites(love.graphics.newImage(love.image.newImageData(64,64)))
 	end
+
+	--vpet.sprites = vpet:initsprites(love.graphics.newImage('rom/font.png'))
+
 	vpet.spriteQuad = love.graphics.newQuad(0,0,vpet.SPRITEW,vpet.SPRITEH,vpet.sprites:getWidth(),vpet.sprites:getHeight())
+
+	love.resize()
 end
 
 function love.update(dt)
@@ -144,18 +173,66 @@ function love.update(dt)
 	end
 end
 
+function love.draw()
+	love.graphics.setColor(255,255,255,255)
+	vpet.screen:renderTo(
+		function()
+			if cart.draw and type(cart.draw)=='function' then
+				cart:draw()
+			end
+			--vpet.env.cls()
+			for i=0,7 do
+				--print(vpet.font:getLine(34,i))
+			end
+		end
+	)
+	--love.graphics.clear(119,119,119)
+	love.graphics.draw(emu.bg.image, emu.bg.x, emu.bg.y, 0, emu.bg.scale, emu.bg.scale)
+	love.graphics.draw(vpet.console.image, emu.center.x + vpet.console.x*vpet.scale, emu.center.y + vpet.console.y*vpet.scale, 0, vpet.scale)
+	love.graphics.setColor({0xdd,0xee,0xcc})
+	love.graphics.draw(vpet.screen, emu.center.x + vpet.x*vpet.scale, emu.center.y + vpet.y*vpet.scale, 0, vpet.scale)
+	love.graphics.setColor(255,255,255,255)
+end
+
 function love.keypressed(key, scancode, isrepeat)
 	if not isrepeat then
-		print(key, 'pressed')
+		if key == '9' then
+			emu.cozy = emu.cozy - 1
+			if emu.cozy < 0 then
+				emu.cozy = 0
+			end
+			love.resize()
+		elseif key == '0' then
+			emu.cozy = emu.cozy + 1
+			if emu.cozy > 8 then
+				emu.cozy = 8
+			end
+			love.resize()
+		end
+		--print(emu.cozy)
+		--print(key, 'pressed')
 		vpet.keyevent(key)
 	end
 end
 
 function love.keyreleased(key, scancode, isrepeat)
 	if not isrepeat then
-		print(key, 'released')
+		--print(key, 'released')
 		vpet.keyevent(key, true)
 	end
+end
+
+function love.resize(w, h)
+	w = w or love.graphics.getWidth()
+	h = h or love.graphics.getHeight()
+	--print(w,h)
+	emu.center.x = math.floor(w/2)
+	emu.center.y = math.floor(h/2)
+	emu.bg.scale = math.max(w / emu.bg.image:getWidth(), h / emu.bg.image:getHeight())
+	emu.bg.x = emu.center.x - (emu.bg.image:getWidth()/2 * emu.bg.scale)
+	emu.bg.y = emu.center.y - (emu.bg.image:getHeight()/2 * emu.bg.scale)
+	local scale = math.min(math.floor(w / vpet.minw), math.floor(h / vpet.minh))
+	vpet.scale = math.max(scale - emu.cozy, 1)
 end
 
 function vpet.keyevent(key, released)
@@ -173,24 +250,6 @@ function vpet.keyevent(key, released)
 			end
 		end
 	end
-end
-
-function love.draw()
-	vpet.screen:renderTo(
-		function()
-			if cart.draw and type(cart.draw)=='function' then
-				cart:draw()
-			end
-			--vpet.env.cls()
-			for i=0,7 do
-				print(vpet.font:getLine(34,i))
-			end
-		end
-	)
-	love.graphics.clear(119,119,119)
-	love.graphics.draw(vpet.bg, 0, 0, 0, bgscale, bgscale)
-	love.graphics.draw(vpet.console.image, center.x + vpet.console.x*vpet.scale, center.y + vpet.console.y*vpet.scale, 0, vpet.scale)
-	love.graphics.draw(vpet.screen, center.x + vpet.x*vpet.scale, center.y + vpet.y*vpet.scale, 0, vpet.scale)
 end
 
 function vpet:initsprites(sprites)

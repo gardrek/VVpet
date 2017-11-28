@@ -1,4 +1,4 @@
-local game={}
+local game = {}
 
 local draw = {
 	x = 14,
@@ -39,7 +39,7 @@ function game:draw()
 end
 
 function game:update(dt)
-	t=t+dt
+	t = t + dt
 	cursor_blink = (cursor_blink + dt) % 0.8
 	drawcursor = cursor_blink < 0.4
 end
@@ -48,8 +48,8 @@ function game:input(button, released)
 	if not released then
 		cursor_blink = 0
 		if button == 2 then
-			if board[cursor.y+1][cursor.x+1]==0 then
-				board[cursor.y+1][cursor.x+1] = to_move + 1
+			if board[cursor.y + 1][cursor.x + 1]==0 then
+				board[cursor.y + 1][cursor.x + 1] = to_move + 1
 				to_move = 1 - to_move
 			end
 		elseif button == 1 then
@@ -71,11 +71,11 @@ function game:input(button, released)
 	end
 end
 
-function drawspriteblock(sx,sy,w,h,x,y)
-	local sprw,sprh = 4,4
-	for yi=0,w-1 do
-		for xi=0,h-1 do
-			drawsprite(sx+xi,sy+yi,x+xi*sprw,y+yi*sprh)
+function drawspriteblock(sx, sy, w, h, x, y)
+	local sprw, sprh = 4, 4
+	for yi = 0, w - 1 do
+		for xi = 0, h - 1 do
+			drawsprite(sx + xi, sy + yi, x + xi * sprw, y + yi * sprh)
 		end
 	end
 end
