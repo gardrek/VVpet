@@ -2,14 +2,18 @@
 -- the format of the table is detailed below
 -- all x, y co-ordinates are measured with the origin at the center of the device
 
-return {
-	VERSION = {0, 0, 1}, -- version number, analogous to 0.0.1
+local hw = {
+	-- available categories include: info, base, view, output, input
+	info = {
+		name = 'vPET64',
+		version = {0, 0, 1}, -- version number, analogous to 0.0.1
+	},
 	base = {
 		-- base specifies the background image of the device, and the default dimensions of the device
 		image = 'base.png',
 		x = -64,
 		y = -64,
-		h = 128,
+		-h = 128,
 		w = 128,
 	},
 	view = {
@@ -21,10 +25,10 @@ return {
 		minw = 80,
 		minh = 120,
 	},
+	output = {
 	-- output is an array of all the output units
 	-- types: lcd, led, vibrator?, beeper?
 	-- lcd is the most complicated one, having its own subtypes
-	output = {
 		{
 			-- the lcd unit contains other units specific to it. these units should not appear outside an lcd unit
 			-- the lcd subunits are: dotmatrix, backlight, 
@@ -33,10 +37,7 @@ return {
 			y = -16,
 			w = 68,
 			h = 68,
-			colors = {
-				[0] = {0xff, 0xff, 0xff}, -- white (paper)
-				[1] = {0x00, 0x00, 0x00}, -- black (ink)
-			},
+			bgcolor = {0xff, 0xff, 0xff},
 			{
 				-- the dotmatrix unit is a rectangular array of pixels on an lcd. it is typically used for the main screen
 				type = 'dotmatrix',
@@ -44,7 +45,10 @@ return {
 				y = -16,
 				w = 64,
 				h = 64,
-				colorize = {0xdd,0xee,0xcc}
+				colors = {
+					[0] = {0xee, 0xff, 0xee}, -- white (paper)
+					[1] = {0x11, 0x11, 0x22}, -- black (ink)
+				},
 			},
 		},
 		{
@@ -54,6 +58,8 @@ return {
 			y = -56,
 			w = 4,
 			h = 4,
+			image_on = 'led_on.png',
+			image_on = 'led_off.png',
 		},
 	},
 	-- input is a table optionally containing: buttons, pedometer?, gyro?, touchscreen?, something else?
@@ -116,3 +122,15 @@ return {
 		},
 	},
 }
+
+for k,v in pairs(hw.input.buttons) do
+	if tonumber(k) then
+		v.image_up = 'screen_button.png'
+		v.image_down = 'screen_button_pressed.png'
+	else
+		v.image_up = k..'_button.png'
+		v.image_down = k..'_button_pressed.png'
+	end
+end
+
+return hw

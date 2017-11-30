@@ -28,7 +28,7 @@ function game:draw()
 	cls(0)
 	drawspriteblock(2 * to_move + 11, 0, 2, 2, draw.x - 4, draw.y - 12)
 	drawspriteblock(9, 5, 2, 7, draw.x + 8, draw.y - 12)
-	drawspriteblock(0, 0, 8, 8, draw.x, draw.y)
+	drawspriteblock(0, 0, 9, 9, draw.x, draw.y)
 	drawspriteblock(0, 14, 2, 16, 0, 56)
 	for yi = 0, 2 do
 		for xi = 0, 2 do

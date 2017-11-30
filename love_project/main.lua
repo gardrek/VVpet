@@ -7,26 +7,29 @@ function love.load()
 	io.stdout:setvbuf('no') -- enable normal use of the print() command
 	love.graphics.setDefaultFilter('nearest', 'nearest', 0)
 
-	-- set up cart environment
+	-- set up sandbox environments
 	vpet.env = {}
-	local env_globals={
+	vpet.hwenv = {}
+	local env_globals = {
 		-- Functions and variables
-		--'garbagecollect','dofile','_G','getfenv','load','loadfile',
-		--'loadstring','setfenv','rawequal','rawget','rawset',
-		'assert','error','getmetatable','ipairs',
-		'next','pairs','pcall','print',
-		'select','tonumber','tostring','type',
-		'unpack','_VERSION','xpcall',
+		--'garbagecollect', 'dofile', '_G', 'getfenv', 'load', 'loadfile',
+		--'loadstring', 'setfenv', 'rawequal', 'rawget', 'rawset',
+		'assert', 'error', 'getmetatable', 'ipairs',
+		'next', 'pairs', 'pcall', 'print',
+		'select', 'tonumber', 'tostring', 'type',
+		'unpack', '_VERSION', 'xpcall',
 		-- Libraries
-		'math',
+		'math', 'table'
 	}
 	for i,v in ipairs(env_globals) do
 		vpet.env[v]=_G[v]
+		vpet.hwenv[v]=_G[v]
 	end
 	for k,v in pairs(api) do
 		vpet.env[k]=v
 	end
 	vpet.env._G = vpet.env
+	vpet.hwenv._G = vpet.hwenv
 
 	vpet.inputmap = {
 		-- system buttons - these buttons are handled differently when an app is run from inside another app
@@ -61,15 +64,12 @@ function love.load()
 	vpet.x, vpet.y = -32, -48
 
 	-- vpet stuff
-	vpet.colors={
-		[0]=
-		{255,255,255}, -- white (paper)
-		{  0,  0,  0}, -- black (ink)
-		--{255,  0,255}, -- [PLANNED] violet, no change (transparent)
-		--{  0,255,255}, -- [PLANNED] turquoise, invert
+	vpet.convertcolors={
+		[0] = {0xdd, 0xee, 0xcc},
+		[1] = {0x11, 0x11, 0x22},
 	}
 
-	vpet.screen = love.graphics.newCanvas(64,64, 'rgba4', 0)
+	vpet.screen = love.graphics.newCanvas(64, 64, 'rgba4', 0)
 	vpet.screen:renderTo(
 		function()
 			api.cls()
@@ -82,19 +82,22 @@ function love.load()
 
 	-- load the cart script
 	local success
-	success,cart = vpet:loadscript(cartfolder..'cart.lua')
+	success, cart = vpet:loadscript(cartfolder..'cart.lua')
 	if success then
 		print('Cart loaded')
 	else
 		print(cart)
 		cart = {}
-		success,cart = vpet:loadscript('rom/splash.lua')
+		success, cart = vpet:loadscript('rom/splash.lua')
 		if success then
 			print('Using default cart...')
 		else
 			cart = {}
 		end
 	end
+
+	-- cheap hack to be refactored out
+	vpet.cart = cart
 
 	---- graphics stuff
 	-- Loading the console information (rn just a picture)
@@ -114,42 +117,68 @@ function love.load()
 	-- load the game's sprites
 	local spritefile
 	spritefile = cart.spritefile and cartfolder..cart.spritefile or cartfolder..'/sprites.png'
-	if not file_exists(spritefile) then
+	if not love.filesystem.exists(spritefile) then
 		spritefile = 'rom/nocart.png'
 	end
-	if file_exists(spritefile) then
+	if love.filesystem.exists(spritefile) then
 		vpet.sprites = vpet:initsprites(love.graphics.newImage(spritefile))
 	else
-		vpet.sprites = vpet:initsprites(love.graphics.newImage(love.image.newImageData(64,64)))
+		vpet.sprites = vpet:initsprites(love.graphics.newImage(love.image.newImageData(64, 64)))
 	end
 
 	--vpet.sprites = vpet:initsprites(love.graphics.newImage('rom/font.png'))
 
-	vpet.spriteQuad = love.graphics.newQuad(0,0,vpet.SPRITEW,vpet.SPRITEH,vpet.sprites:getWidth(),vpet.sprites:getHeight())
+	vpet.spriteQuad = love.graphics.newQuad(0, 0, vpet.SPRITEW, vpet.SPRITEH, vpet.sprites:getWidth(), vpet.sprites:getHeight())
 
 	love.resize()
 end
 
 function love.update(dt)
-	if cart.update and type(cart.update)=='function' then
+	if cart.update and type(cart.update) == 'function' then
 		cart:update(dt)
 	end
 end
 
 function love.draw()
-	love.graphics.setColor(255,255,255,255)
+	love.graphics.setColor(0xff, 0xff, 0xff, 0xff)
 	vpet.screen:renderTo(
 		function()
-			if cart.draw and type(cart.draw)=='function' then
+			if cart.draw and type(cart.draw) == 'function' then
 				cart:draw()
 			end
 		end
 	)
-	love.graphics.draw(emu.bg.image, emu.bg.x, emu.bg.y, 0, emu.bg.scale, emu.bg.scale)
-	love.graphics.draw(vpet.console.image, emu.center.x + vpet.console.x*emu.scale, emu.center.y + vpet.console.y*emu.scale, 0, emu.scale)
-	love.graphics.setColor(0xdd,0xee,0xcc)
-	love.graphics.draw(vpet.screen, emu.center.x + vpet.x*emu.scale, emu.center.y + vpet.y*emu.scale, 0, emu.scale)
-	love.graphics.setColor(255,255,255,255)
+
+	-- scenery background image
+	love.graphics.draw(
+		emu.bg.image,
+		emu.bg.x, emu.bg.y,
+		0, emu.bg.scale
+	)
+
+	-- base console
+	love.graphics.draw(
+		vpet.console.image,
+		emu.center.x + vpet.console.x*emu.scale,
+		emu.center.y + vpet.console.y*emu.scale,
+		0, emu.scale
+	)
+
+	-- lcd background
+	love.graphics.rectangle(
+		'fill',
+		emu.center.x + (vpet.x - 2) * emu.scale,
+		emu.center.y + (vpet.y - 2) * emu.scale,
+		(vpet.screenw + 4) * emu.scale, (vpet.screenh + 4) * emu.scale
+	)
+
+	--[ screen
+	love.graphics.draw(
+		vpet.screen,
+		emu.center.x + vpet.x*emu.scale,
+		emu.center.y + vpet.y*emu.scale,
+		0, emu.scale
+	)
 end
 
 function love.keypressed(key, scancode, isrepeat)
@@ -212,10 +241,17 @@ end
 
 function vpet:initsprites(sprites)
 	local raw = sprites:getData()
+	local colors = {
+		[0]=
+		{0xff, 0xff, 0xff}, -- white (paper)
+		{0x00, 0x00, 0x00}, -- black (ink)
+		--{0xff, 0x00, 0xff}, -- [PLANNED] violet, no change (transparent)
+		--{0x00, 0xff, 0x00}, -- [PLANNED] green, invert
+	}
 	local hadInvalidPixels=false
 	raw:mapPixel(
 		function(x, y, r, g, b, a)
-			-- Currently makes the image have only three colors: white, black, and zero-alpha
+			-- Currently makes the image have only three colors: white, black, and zero-alpha black
 			local valid=false
 			local pix
 			if a==0 then
@@ -225,20 +261,23 @@ function vpet:initsprites(sprites)
 				g = g > 127 and 255 or 0
 				b = b > 127 and 255 or 0
 			end
-			for i,v in pairs(self.colors) do
-				if v[1]==r and v[2]==g and v[3]==b then
-					valid=true
+			for i,v in pairs(colors) do
+				if v[1] == r and v[2] == g and v[3] == b then
+					valid = true
+					pix = self.convertcolors[i] or {r, g, b}
 					break
 				end
 			end
 			if not valid then
 				hadInvalidPixels=true
-				local pix=(r+g+b)/255
+				local pix=(r+g+b)/3
 				if pix<128 then
 					r,g,b = 0,0,0
 				else
 					r,g,b = 255,255,255
 				end
+			else
+				r,g,b = unpack(pix)
 			end
 			return r, g, b, a
 		end
@@ -247,32 +286,46 @@ function vpet:initsprites(sprites)
 	return love.graphics.newImage(raw)
 end
 
-function vpet:loadscript(script)
+function vpet:loadscript(script, env)
 	local _LuaBCHeader = string.char(0x1B)..'LJ'
-	local file = io.open(script,'r')
-	if file then
-		if file:read(3)==_LuaBCHeader then
+	local exists = love.filesystem.exists(script)
+	if exists then
+		if love.filesystem.read(script, 3) == _LuaBCHeader then
 			print('Bytecode is not allowed.')
 			return false
 		end
-		file:close()
 	else
 		print('script '..script..' failed to load: file not opened')
 		return false
 	end
-	local f, error = loadfile(script)
-	if not f then print('script '..script..' failed to load: script error') return false, error end
-	setfenv(f, self.env)
+	local ok, f = pcall(love.filesystem.load, script)
+	if not ok then print('script '..script..' failed to load: script error') return false, f end
+	setfenv(f, env or self.env)
 	return pcall(f)
 end
 
 function vpet:loadhardware(dir)
-	local success, hw, error = vpet:loadscript(dir..'/hw.lua')
+	local success, hw, error = vpet:loadscript(dir..'/hw.lua', self.hwenv)
+	local loaded = {dir = dir}
+	local malformed = false
+	local id = 'HARDWARE'
 	if success then
-		hw.dir = dir
-		return hw
+		if type(hw) ~='table' then
+			print('hardware descriptor script returned '..type(hw)..', not table.')
+			return false, hw
+		end
+		loaded.info = hw.info
+		id = tostring(loaded.info.name or dir or 'HARDWARE')
+		if hw.base then
+			loaded.base = {}
+			if not(hw.base.x and hw.base.y and hw.base.w and hw.base.h) then
+				print('hardware '..id..' base geometry malformed')
+				malformed = true
+			end
+		end
+		return loaded
 	else
-		print('hardware in '..dir..'failed to load')
+		print('hardware in '..dir..' failed to load')
 		return false
 	end
 end
@@ -287,15 +340,34 @@ function api.drawsprite(sx,sy,x,y)
 	love.graphics.draw(vpet.sprites,vpet.spriteQuad,x,y)
 end
 
+function api.pix(x,y,c)
+	local oldc = {love.graphics.getColor()}
+	if c then
+		c = math.floor(c) % 2
+	end
+	love.graphics.setColor(c)
+	--love.graphics.
+	love.graphics.setColor(oldc)
+end
+
 function api.cls(c)
 	c=c or 0
 	c=math.floor(c)%2
-	love.graphics.clear(vpet.colors[c])
+	love.graphics.clear(vpet.convertcolors[c])
 end
 
 -- useful functions
 
-function file_exists(name)
-	local f=io.open(name,'r')
-	if f~=nil then io.close(f) return true else return false end
+function file_chain(files, fail)
+	-- files is an array of file names
+	-- fail is an optional callback function in the form of fail(index, filename) which is called when the file doesn't exist
+	if type(files) ~= 'table' then print('first argument to file_chain must be a table') return false end
+	for i,v in ipairs(files) do
+		if love.filesystem.exists(v) then
+			return v
+		elseif type(fail) ~= 'function' then
+			fail(i,v)
+		end
+	end
+	return false
 end
