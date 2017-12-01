@@ -60,3 +60,8 @@ Warning: This API is in early development, and is subject to change without warn
 `cls(color)`
 
 If `color` is given, clears the main screen to that color, if not, clears it to color 0.
+
+---
+`led(on)`
+
+If `on` is given, turns the LED on for true and off for false. If not, returns whether the LED is on.
