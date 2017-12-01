@@ -20,8 +20,10 @@ function game:event(type, data)
 	if type == 'button' and data.button == '2' then
 		if data.down then
 			bgcolor = 1
+			led(false)
 		else
 			bgcolor = 0
+			led(true)
 		end
 	end
 end

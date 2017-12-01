@@ -83,6 +83,8 @@ function love.load()
 					end
 					print('Subunit '..i2..', type '..subunit.type..', of LCD '..i1..' loaded')
 				end
+			elseif unit.type == 'led' then
+				unit.on = true
 			end
 		end
 	end
@@ -546,4 +548,14 @@ function api.cls(c)
 	c=c or 0
 	c=math.floor(c)%2
 	love.graphics.clear(vpet.convertcolors[c])
+end
+
+function api.led(value)
+	local led = vpet.hw.output[2]
+	if value == nil then
+		return led.on
+	else
+		led.on = value and true or false
+		return led.on
+	end
 end
