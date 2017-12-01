@@ -7,6 +7,13 @@ function love.load()
 	io.stdout:setvbuf('no') -- enable normal use of the print() command
 	love.graphics.setDefaultFilter('nearest', 'nearest', 0)
 
+	emu.cozy = 2
+	emu.center = {}
+	emu.scale = 4
+	emu.bg = {}
+	emu.bg.image = love.graphics.newImage('bg.jpg')
+	emu.bg.x, emu.bg.y = 0, 0
+
 	-- set up sandbox environments
 	vpet.env = {}
 	vpet.hwenv = {}
@@ -51,17 +58,43 @@ function love.load()
 		down = {'s', 'down', 'kp5'},
 	}
 
+	-- stores a table of which button inputs are down
+	vpet.input = {}
+
 	-- load hardware
 	vpet.hw = vpet:loadhardware('hw/vpet64/')
+
+	if not vpet.hw then
+		error('Base hardware failed to load!')
+	end
+
+	if vpet.hw.output then
+		for i1, unit in ipairs(vpet.hw.output) do
+			if unit.type == 'lcd' then
+				print('LCD unit '..i1..' loaded')
+				for i2, subunit in ipairs(unit) do
+					if subunit.type == 'dotmatrix' then
+						subunit.canvas = love.graphics.newCanvas(subunit.w, subunit.h, 'normal', 0)
+						subunit.canvas:renderTo(
+							function()
+								love.graphics.clear(unit.colors[0])
+							end
+						)
+					end
+					print('Subunit '..i2..', type '..subunit.type..', of LCD '..i1..' loaded')
+				end
+			end
+		end
+	end
+
+	if vpet.hw.base then
+		vpet.hw.base.minw = vpet.hw.base.minw or vpet.hw.base.w
+		vpet.hw.base.minh = vpet.hw.base.minh or vpet.hw.base.h
+	end
 
 	-- console constants
 	vpet.SPRITEW = 4
 	vpet.SPRITEH = 4
-	vpet.screenw = 64
-	vpet.screenh = 64
-	vpet.minw = 80
-	vpet.minh = 120
-	vpet.x, vpet.y = -32, -48
 
 	-- vpet stuff
 	vpet.convertcolors={
@@ -69,16 +102,9 @@ function love.load()
 		[1] = {0x11, 0x11, 0x22},
 	}
 
-	vpet.screen = love.graphics.newCanvas(64, 64, 'rgba4', 0)
-	vpet.screen:renderTo(
-		function()
-			api.cls()
-		end
-	)
-
 	local cartfolder = 'carts/'
-	--cartfolder='rom/'
-	cartfolder = cartfolder..'tictactoe/'
+	cartfolder='rom/'
+	--cartfolder = cartfolder..'tictactoe/'
 
 	-- load the cart script
 	local success
@@ -96,24 +122,6 @@ function love.load()
 		end
 	end
 
-	-- cheap hack to be refactored out
-	vpet.cart = cart
-
-	---- graphics stuff
-	-- Loading the console information (rn just a picture)
-	vpet.console = {
-		image = love.graphics.newImage('hw/vpet64/base.png'),
-	}
-	vpet.console.x = -math.floor(vpet.console.image:getWidth()/2)
-	vpet.console.y = -math.floor(vpet.console.image:getHeight()/2)
-
-	emu.cozy = 2
-	emu.center = {}
-	emu.scale = 4
-	emu.bg = {}
-	emu.bg.image = love.graphics.newImage('bg.jpg')
-	emu.bg.x, emu.bg.y = 0, 0
-
 	-- load the game's sprites
 	local spritefile
 	spritefile = cart.spritefile and cartfolder..cart.spritefile or cartfolder..'/sprites.png'
@@ -128,6 +136,8 @@ function love.load()
 
 	--vpet.sprites = vpet:initsprites(love.graphics.newImage('rom/font.png'))
 
+	vpet.sprites = vpet:loadvrom(vpet.hw.output[1], nil, 'rom/font.png')
+
 	vpet.spriteQuad = love.graphics.newQuad(0, 0, vpet.SPRITEW, vpet.SPRITEH, vpet.sprites:getWidth(), vpet.sprites:getHeight())
 
 	love.resize()
@@ -141,13 +151,7 @@ end
 
 function love.draw()
 	love.graphics.setColor(0xff, 0xff, 0xff, 0xff)
-	vpet.screen:renderTo(
-		function()
-			if cart.draw and type(cart.draw) == 'function' then
-				cart:draw()
-			end
-		end
-	)
+
 
 	-- scenery background image
 	love.graphics.draw(
@@ -157,28 +161,75 @@ function love.draw()
 	)
 
 	-- base console
-	love.graphics.draw(
-		vpet.console.image,
-		emu.center.x + vpet.console.x*emu.scale,
-		emu.center.y + vpet.console.y*emu.scale,
-		0, emu.scale
-	)
+	if vpet.hw.base.image then
+		love.graphics.draw(
+			vpet.hw.base.image,
+			emu.center.x + vpet.hw.base.x * emu.scale,
+			emu.center.y + vpet.hw.base.y * emu.scale,
+			0, emu.scale
+		)
+	end
 
-	-- lcd background
-	love.graphics.rectangle(
-		'fill',
-		emu.center.x + (vpet.x - 2) * emu.scale,
-		emu.center.y + (vpet.y - 2) * emu.scale,
-		(vpet.screenw + 4) * emu.scale, (vpet.screenh + 4) * emu.scale
-	)
+	-- draw buttons
+	if vpet.hw.input and vpet.hw.input.buttons then
+		local image
+		for k,v in pairs(vpet.hw.input.buttons) do
+			image = vpet.input[k] and v.image_down or v.image_up or v.image
+			if image then
+				love.graphics.draw(
+					image,
+					emu.center.x + (v.x - v.w / 2) * emu.scale,
+					emu.center.y + (v.y - v.h / 2) * emu.scale,
+					0, emu.scale
+				)
+			end
+		end
+	end
 
-	--[ screen
-	love.graphics.draw(
-		vpet.screen,
-		emu.center.x + vpet.x*emu.scale,
-		emu.center.y + vpet.y*emu.scale,
-		0, emu.scale
-	)
+	--draw outputs
+	if vpet.hw.output then
+		for index, unit in ipairs(vpet.hw.output) do
+			if unit.type == 'led' then
+				image = unit.on and unit.image_on or unit.image_off
+				if image then
+					love.graphics.setColor(0xff, 0xff, 0xff, 0xff)
+					love.graphics.draw(
+						image,
+						emu.center.x + (unit.x - unit.w / 2) * emu.scale,
+						emu.center.y + (unit.y - unit.h / 2) * emu.scale,
+						0, emu.scale
+					)
+				end
+			elseif unit.type == 'lcd' then
+				love.graphics.setColor(unit.bgcolor or {0xff, 0xff, 0xff, 0xff})
+				love.graphics.rectangle(
+					'fill',
+					emu.center.x + (unit.x - unit.w / 2) * emu.scale,
+					emu.center.y + (unit.y - unit.h / 2) * emu.scale,
+					unit.w * emu.scale, unit.h * emu.scale
+				)
+				for subindex, subunit in ipairs(unit) do
+					if subunit.type == 'dotmatrix' then
+						love.graphics.setColor(0xff, 0xff, 0xff, 0xff)
+						--TODO: fix this and add support for more than one matrix/output type
+						if index == 1 then
+							subunit.canvas:renderTo(function()
+								if cart.draw and type(cart.draw) == 'function' then
+									cart:draw()
+								end
+							end)
+						end
+						love.graphics.draw(
+							subunit.canvas,
+							emu.center.x + (unit.x + subunit.x - subunit.w / 2) * emu.scale,
+							emu.center.y + (unit.y + subunit.y - subunit.h / 2) * emu.scale,
+							0, emu.scale
+						)
+					end
+				end
+			end
+		end
+	end
 end
 
 function love.keypressed(key, scancode, isrepeat)
@@ -218,25 +269,53 @@ function love.resize(w, h)
 	emu.bg.scale = math.max(w / emu.bg.image:getWidth(), h / emu.bg.image:getHeight())
 	emu.bg.x = emu.center.x - (emu.bg.image:getWidth()/2 * emu.bg.scale)
 	emu.bg.y = emu.center.y - (emu.bg.image:getHeight()/2 * emu.bg.scale)
-	local scale = math.min(math.floor(w / vpet.minw), math.floor(h / vpet.minh))
+	local scale = math.min(math.floor(w / vpet.hw.base.minw), math.floor(h / vpet.hw.base.minh))
 	emu.scale = math.max(scale - emu.cozy, 1)
 end
 
 function vpet.keyevent(key, released)
-	local pressed=false
+	local changed=false
 	if cart.event and type(cart.event)=='function' then -- TODO: refactor this to be a check into a table of declared functions
 		for k,v in pairs(vpet.inputmap) do
-			pressed=false
+			changed=false
 			for i,bind in ipairs(v) do
 				if bind==key then
-					pressed=true
+					changed=true
 				end
 			end
-			if pressed then
+			if changed then
+				vpet.input[k] = not released
 				cart:event('button', {button = k, up = released, down = not released})
 			end
 		end
 	end
+end
+
+function vpet:loadvrom(lcd,type,file)
+	local image, raw
+	if file then
+		image = love.graphics.newImage(file)
+	else
+		--image = love.graphics.newImage()
+	end
+	raw = image:getData()
+	raw:mapPixel(
+		function(x, y, r, g, b, a)
+			a = a < 128 and 0 or 255
+			local distance
+			local closest = 16777216
+			local color
+			for i = 0, #lcd.colors do v = lcd.colors[i]
+				distance = (v[1] - r) * (v[1] - r) + (v[2] - g) * (v[2] - g) + (v[3] - b) * (v[3] - b)
+				if distance < closest then
+					closest = distance
+					color = v
+				end
+			end
+			return color[1], color[2], color[3], a
+		end
+	)
+	return love.graphics.newImage(raw)
 end
 
 function vpet:initsprites(sprites)
@@ -254,7 +333,7 @@ function vpet:initsprites(sprites)
 			-- Currently makes the image have only three colors: white, black, and zero-alpha black
 			local valid=false
 			local pix
-			if a==0 then
+			if a == 0 then
 				r,g,b = 0, 0, 0
 			else
 				r = r > 127 and 255 or 0
@@ -307,27 +386,140 @@ end
 function vpet:loadhardware(dir)
 	local success, hw, error = vpet:loadscript(dir..'/hw.lua', self.hwenv)
 	local loaded = {dir = dir}
-	local malformed = false
-	local id = 'HARDWARE'
-	if success then
-		if type(hw) ~='table' then
-			print('hardware descriptor script returned '..type(hw)..', not table.')
-			return false, hw
+	local hw_errors = 0
+	local id = dir
+	local file
+
+	function finish(...)
+		if hw_errors == 0 then
+			print('Hardware '..id..' loaded with no errors.')
+		elseif hw_errors == -1 then
+			print('Hardware '..id..' failed to load.')
+		elseif hw_errors < 0 then
+			print('Hardware '..id..' loaded with negative zero errors. :P')
+		else
+			print('Hardware '..id..' loaded with '..hw_errors..' errors.')
 		end
-		loaded.info = hw.info
-		id = tostring(loaded.info.name or dir or 'HARDWARE')
-		if hw.base then
-			loaded.base = {}
-			if not(hw.base.x and hw.base.y and hw.base.w and hw.base.h) then
-				print('hardware '..id..' base geometry malformed')
-				malformed = true
+		return ...
+	end
+
+	function load_images(dest, source, names, errormessage)
+		for i, v in ipairs(names) do
+			if source[v] then
+				file = dir..source[v]
+				if love.filesystem.exists(file) then
+					dest[v] = love.graphics.newImage(file)
+				else
+					print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
+					hw_errors = hw_errors + 1
+				end
 			end
 		end
-		return loaded
-	else
-		print('hardware in '..dir..' failed to load')
-		return false
 	end
+
+	if not success then
+		hw_errors = -1
+		return finish(false, error)
+	end
+
+	if type(hw) ~='table' then
+		print('hardware descriptor script in "'..dir..'" returned '..type(hw)..', not table.')
+		hw_errors = -1
+		return finish(false, hw)
+	end
+
+	local categories = {'info', 'base', 'output', 'input'}
+	for i,v in ipairs(categories) do
+		if type(hw[v]) ~= 'table' and type(hw[v]) ~= 'nil' then
+			print('hardware error: key "'..tostring(v)..'" must be table if it exists')
+			hw_errors = hw_errors + 1
+		end
+	end
+
+	if hw_errors > 0 then return finish({}) end
+
+	if hw.info then
+		id = hw.info.name or dir
+		loaded.info = hw.info
+	end
+	if hw.base then
+		loaded.base = {}
+		local malformed = false
+		for i,v in ipairs{'x', 'y', 'w', 'h', 'minw', 'minh'} do
+			if hw.base[v] then
+				loaded.base[v] = hw.base[v]
+			else
+				hw_errors = hw_errors + 1
+				malformed = true
+				loaded.base[v] =  i <= 2 and 0 or 20
+				-- the line above makes the base geometry pretty small but at least it errors so you know. also HAAAX
+			end
+		end
+		file = dir..hw.base.image
+		if love.filesystem.exists(file) then
+			loaded.base.image = love.graphics.newImage(file)
+		else
+			print('hardware '..id..': base image "'..file..'" not loaded')
+			hw_errors = hw_errors + 1
+		end
+		if malformed then
+			print('hardware '..id..': base geometry malformed')
+		end
+	end
+	-- TODO: This function currently does VERY LITTLE checking that outputs are correctly formed
+	if hw.output then
+		loaded.output = {}
+		local unit
+		for i1, o in ipairs(hw.output) do
+			if o.type then
+				unit = {type = o.type}
+				for i2, type in pairs{'led', 'lcd'} do
+					if o.type == type then
+						unit.x = o.x
+						unit.y = o.y
+						unit.w = o.w
+						unit.h = o.h
+					end
+				end
+				if o.type == 'led' then
+					load_images(unit, o, {'image_on', 'image_off'}, 'LED'..tostring(i1))
+				elseif o.type == 'lcd' then
+					unit.bgcolor = o.bgcolor
+					unit.colors = o.colors
+					local subunit
+					for i3, hw_subunit in ipairs(o) do
+						subunit = {type = hw_subunit.type}
+						if hw_subunit.type == 'dotmatrix' or hw_subunit.type == 'backlight' then
+							for key, value in pairs(hw_subunit) do
+								subunit[key] = value
+							end
+						end
+						table.insert(unit, subunit)
+					end
+				end
+				table.insert(loaded.output, unit)
+			else
+				print('unknown output not loaded')
+			end
+		end
+	end
+	if hw.input then
+		loaded.input = {}
+		if hw.input.buttons then
+			loaded.input.buttons = {}
+			for button,t in pairs(hw.input.buttons) do
+				loaded.input.buttons[button] = {
+					x = t.x,
+					y = t.y,
+					h = t.h,
+					w = t.w,
+				}
+				load_images(loaded.input.buttons[button], t, {'image', 'image_up', 'image_down'}, 'Button')
+			end
+		end
+	end
+
+	return finish(loaded)
 end
 
 -- Following are the functions which can be called from within the script

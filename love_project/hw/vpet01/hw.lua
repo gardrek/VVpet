@@ -5,7 +5,7 @@
 local hw = {
 	-- available categories include: info, base, output, input
 	info = {
-		name = 'vPET64',
+		name = 'vPET01',
 		version = {0, 0, 1}, -- version number, analogous to 0.0.1
 	},
 	base = {
@@ -41,9 +41,9 @@ local hw = {
 				-- NOTE: the co-ordinates here are relative to the CENTER of the LCD screen
 				type = 'dotmatrix',
 				x = 0,
-				y = 0,
+				y = 8,
 				w = 64,
-				h = 64,
+				h = 48,
 			},
 			{
 				type = 'backlight',

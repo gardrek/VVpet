@@ -27,7 +27,7 @@ Below is a small sample program illustrating this. Note the `table:method` synta
     end
 
     function game:event(type, data)
-      if type == 'button' and data.button == '2' then
+      if type == 'button' and data.button == 'down' then
         if data.down then
           bgcolor = 1
         else
@@ -38,9 +38,14 @@ Below is a small sample program illustrating this. Note the `table:method` synta
 
     return game
 
+The following are the available callback functions:
+`draw()`, `update(dt)`, `event(type, data)`
+
+These are also subject to change. One thing is, to combine update and draw into one, if possible.
+
 ## API
 
-Warning: This API is in early development, and is subject to change without warning.
+Warning: This API is in early development, and is subject to change without warning. One change that will likely come is packaging it into a table, but that will be after some major reform.
 
 `drawsprite(sx, sy, x, y)`
 
