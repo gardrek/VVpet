@@ -136,7 +136,7 @@ function love.load()
 
 	--vpet.sprites = vpet:initsprites(love.graphics.newImage('rom/font.png'))
 
-	vpet.sprites = vpet:loadvrom(vpet.hw.output[1], nil, 'rom/font.png')
+	--vpet.sprites = vpet:loadvrom(vpet.hw.output[1], nil, 'rom/font.png')
 
 	vpet.spriteQuad = love.graphics.newQuad(0, 0, vpet.SPRITEW, vpet.SPRITEH, vpet.sprites:getWidth(), vpet.sprites:getHeight())
 
@@ -546,20 +546,4 @@ function api.cls(c)
 	c=c or 0
 	c=math.floor(c)%2
 	love.graphics.clear(vpet.convertcolors[c])
-end
-
--- useful functions
-
-function file_chain(files, fail)
-	-- files is an array of file names
-	-- fail is an optional callback function in the form of fail(index, filename) which is called when the file doesn't exist
-	if type(files) ~= 'table' then print('first argument to file_chain must be a table') return false end
-	for i,v in ipairs(files) do
-		if love.filesystem.exists(v) then
-			return v
-		elseif type(fail) ~= 'function' then
-			fail(i,v)
-		end
-	end
-	return false
 end

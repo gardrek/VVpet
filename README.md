@@ -1,5 +1,8 @@
 # vPET-64
 
+## Quick Start
+Right now the easiest way to run your program is to open up the zip/löve file and put your program files in the /rom folder. This will make your program run on boot. Your main lua should be 'cart.lua' and you can have a sprite file called 'sprites.lua'
+
 ## Files
 Currently, the files read for loading an application are:
 `cart.lua`
