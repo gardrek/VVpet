@@ -481,10 +481,8 @@ function vpet:loadhardware(dir)
 end
 
 -- Following are the functions which can be called from within the script
--- TODO: make these be api.* and have the love.load function import them to env under their own table (e.g: vpet)
 -- TODO: also, make them better
 
--- TODO: Make this use stencils for fourthcolor
 function api.drawsprite(sx,sy,x,y)
 	api.blit(sx*4, sy*4, 4, 4, x, y)
 end
@@ -506,25 +504,32 @@ function api.blit(srcx, srcy, w, h, destx, desty, src, dest, lcd)
 	end)
 end
 
-function api.pix(x, y, c)
+function api.pix(x, y, color, dest, lcd)
+	lcd = lcd or 1 -- FIXME because hardcoding the first output as the lcd is bad mmkay
+	lcd = vpet.hw.output[lcd]
+	dest = dest or 0
+	color = color or 1
 	local oldc = {love.graphics.getColor()}
-	if c then
-		c = math.floor(c) % 2
-	end
-	love.graphics.setColor(c)
-	--love.graphics.
+	love.graphics.setColor(lcd.colors[color])
+	lcd.vrom[dest]:renderTo(function()
+		love.graphics.point(x, y)
+	end)
 	love.graphics.setColor(oldc)
 end
 
-function api.cls(c, output)
+function api.cls(c, dest, lcd)
 	c = c or 0
 	c = math.floor(c)%2
-	output = output or 1 -- FIXXXXXXXMEEEEEE
-	love.graphics.clear(vpet.hw.output[output].colors[c])
+	lcd = lcd or 1 -- FIXME: FIXXXXXXXMEEEEEE hardwired
+	lcd = vpet.hw.output[lcd]
+	dest = dest or 0
+	lcd.vrom[dest]:renderTo(function()
+		love.graphics.clear(lcd.colors[c])
+	end)
 end
 
 function api.led(value)
-	local led = vpet.hw.output[2]
+	local led = vpet.hw.output[2] -- FIXME: FIXXXXXXXMEEEEEE hardwired
 	if value ~= nil then
 		led.on = value and true or false
 	end

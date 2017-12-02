@@ -76,3 +76,8 @@ If `color` is given, clears the main screen to that color, if not, clears it to 
 `led(on)`
 
 If `on` is given, turns the LED on for true and off for false. Either way, returns whether the LED is on.
+
+
+## Future work
+
+Support for non-square "pixels," which are not in a strict grid is forthcoming. Thus, allowing to create other LCD games, seven-segment displays, etc.
