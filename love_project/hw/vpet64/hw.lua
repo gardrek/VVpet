@@ -36,6 +36,13 @@ local hw = {
 				[0] = {0xdd, 0xee, 0xcc}, -- white (paper)
 				[1] = {0x11, 0x11, 0x22}, -- black (ink)
 			},
+			vrom = {
+			-- vrom is basically a set of spritesheets called pages
+			-- page 0 is always initialized to a blank canvas, and is writable. other pages are read-only (for now)
+				w = 64,
+				h = 64,
+				'vrom.png',
+			},
 			{
 				-- the dotmatrix unit is a rectangular array of pixels on an lcd.
 				-- NOTE: the co-ordinates here are relative to the CENTER of the LCD screen
@@ -44,6 +51,7 @@ local hw = {
 				y = 0,
 				w = 64,
 				h = 64,
+				page = 0,
 			},
 			{
 				type = 'backlight',

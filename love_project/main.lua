@@ -68,13 +68,24 @@ function love.load()
 		error('Base hardware failed to load!')
 	end
 
+	local spritefile = 'rom/sprites.png'
+	if not love.filesystem.exists(spritefile) then
+		spritefile = 'rom/nocart.png'
+	end
+	if not love.filesystem.exists(spritefile) then
+		spritefile = love.graphics.newImage(love.image.newImageData(64, 64))
+	end
+
 	if vpet.hw.output then
 		for i1, unit in ipairs(vpet.hw.output) do
 			if unit.type == 'lcd' then
 				print('LCD unit '..i1..' loaded')
+				unit.vrom.quad = love.graphics.newQuad(0, 0, unit.vrom.w, unit.vrom.h, unit.vrom.w, unit.vrom.h)
+				vpet:loadvrom(unit,2,spritefile)
 				for i2, subunit in ipairs(unit) do
 					if subunit.type == 'dotmatrix' then
-						subunit.canvas = love.graphics.newCanvas(subunit.w, subunit.h, 'normal', 0)
+						--subunit.canvas = love.graphics.newCanvas(subunit.w, subunit.h, 'normal', 0)
+						subunit.canvas = unit.vrom[subunit.page]
 						subunit.canvas:renderTo(
 							function()
 								love.graphics.clear(unit.colors[0])
@@ -94,16 +105,6 @@ function love.load()
 		vpet.hw.base.minh = vpet.hw.base.minh or vpet.hw.base.h
 	end
 
-	-- console constants
-	vpet.SPRITEW = 4
-	vpet.SPRITEH = 4
-
-	-- vpet stuff
-	vpet.convertcolors={
-		[0] = {0xdd, 0xee, 0xcc},
-		[1] = {0x11, 0x11, 0x22},
-	}
-
 	local cartfolder = 'carts/'
 	cartfolder='rom/'
 	--cartfolder = cartfolder..'tictactoe/'
@@ -114,33 +115,14 @@ function love.load()
 	if success then
 		print('Cart loaded')
 	else
-		print(cart)
 		cart = {}
 		success, cart = vpet:loadscript('rom/splash.lua')
 		if success then
 			print('Using default cart...')
 		else
-			cart = {}
+			error('Could not load default cart!')
 		end
 	end
-
-	-- load the game's sprites
-	local spritefile
-	spritefile = cart.spritefile and cartfolder..cart.spritefile or cartfolder..'/sprites.png'
-	if not love.filesystem.exists(spritefile) then
-		spritefile = 'rom/nocart.png'
-	end
-	if love.filesystem.exists(spritefile) then
-		vpet.sprites = vpet:initsprites(love.graphics.newImage(spritefile))
-	else
-		vpet.sprites = vpet:initsprites(love.graphics.newImage(love.image.newImageData(64, 64)))
-	end
-
-	--vpet.sprites = vpet:initsprites(love.graphics.newImage('rom/font.png'))
-
-	--vpet.sprites = vpet:loadvrom(vpet.hw.output[1], nil, 'rom/font.png')
-
-	vpet.spriteQuad = love.graphics.newQuad(0, 0, vpet.SPRITEW, vpet.SPRITEH, vpet.sprites:getWidth(), vpet.sprites:getHeight())
 
 	love.resize()
 end
@@ -293,9 +275,11 @@ function vpet.keyevent(key, released)
 	end
 end
 
-function vpet:loadvrom(lcd,type,file)
+function vpet:loadvrom(lcd,page,file)
 	local image, raw
-	if file then
+	if type(file) ~= 'string' then
+		image = file
+	elseif file then
 		image = love.graphics.newImage(file)
 	else
 		--image = love.graphics.newImage()
@@ -317,54 +301,7 @@ function vpet:loadvrom(lcd,type,file)
 			return color[1], color[2], color[3], a
 		end
 	)
-	return love.graphics.newImage(raw)
-end
-
-function vpet:initsprites(sprites)
-	local raw = sprites:getData()
-	local colors = {
-		[0]=
-		{0xff, 0xff, 0xff}, -- white (paper)
-		{0x00, 0x00, 0x00}, -- black (ink)
-		--{0xff, 0x00, 0xff}, -- [PLANNED] violet, no change (transparent)
-		--{0x00, 0xff, 0x00}, -- [PLANNED] green, invert
-	}
-	local hadInvalidPixels=false
-	raw:mapPixel(
-		function(x, y, r, g, b, a)
-			-- Currently makes the image have only three colors: white, black, and zero-alpha black
-			local valid=false
-			local pix
-			if a == 0 then
-				r,g,b = 0, 0, 0
-			else
-				r = r > 127 and 255 or 0
-				g = g > 127 and 255 or 0
-				b = b > 127 and 255 or 0
-			end
-			for i,v in pairs(colors) do
-				if v[1] == r and v[2] == g and v[3] == b then
-					valid = true
-					pix = self.convertcolors[i] or {r, g, b}
-					break
-				end
-			end
-			if not valid then
-				hadInvalidPixels=true
-				local pix=(r+g+b)/3
-				if pix<128 then
-					r,g,b = 0,0,0
-				else
-					r,g,b = 255,255,255
-				end
-			else
-				r,g,b = unpack(pix)
-			end
-			return r, g, b, a
-		end
-	)
-	if hadInvalidPixels then print('spritesheet had invalid colors!') end
-	return love.graphics.newImage(raw)
+	lcd.vrom[page] = love.graphics.newImage(raw)
 end
 
 function vpet:loadscript(script, env)
@@ -406,14 +343,26 @@ function vpet:loadhardware(dir)
 	end
 
 	function load_images(dest, source, names, errormessage)
-		for i, v in ipairs(names) do
-			if source[v] then
-				file = dir..source[v]
+		if not names then
+			for i, v in ipairs(source) do
+				file = dir..v
 				if love.filesystem.exists(file) then
-					dest[v] = love.graphics.newImage(file)
+					dest[i] = love.graphics.newImage(file)
 				else
 					print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
 					hw_errors = hw_errors + 1
+				end
+			end
+		else
+			for i, v in ipairs(names) do
+				if source[v] then
+					file = dir..source[v]
+					if love.filesystem.exists(file) then
+						dest[v] = love.graphics.newImage(file)
+					else
+						print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
+						hw_errors = hw_errors + 1
+					end
 				end
 			end
 		end
@@ -488,10 +437,17 @@ function vpet:loadhardware(dir)
 				elseif o.type == 'lcd' then
 					unit.bgcolor = o.bgcolor
 					unit.colors = o.colors
+					if o.vrom then
+						unit.vrom = {}
+						unit.vrom.w = o.vrom.w
+						unit.vrom.h = o.vrom.h
+						unit.vrom[0] = love.graphics.newCanvas(unit.vrom.w, unit.vrom.h, 'normal', 0)
+						load_images(unit.vrom, o.vrom, nil, 'VROM')
+					end
 					local subunit
 					for i3, hw_subunit in ipairs(o) do
 						subunit = {type = hw_subunit.type}
-						if hw_subunit.type == 'dotmatrix' or hw_subunit.type == 'backlight' then
+						if hw_subunit.type == 'dotmatrix' or hw_subunit.type == 'backlight' or hw_subunit.type == 'vrom' then
 							for key, value in pairs(hw_subunit) do
 								subunit[key] = value
 							end
@@ -530,11 +486,27 @@ end
 
 -- TODO: Make this use stencils for fourthcolor
 function api.drawsprite(sx,sy,x,y)
-	vpet.spriteQuad:setViewport(sx*vpet.SPRITEW,sy*vpet.SPRITEH,vpet.SPRITEW,vpet.SPRITEH)
-	love.graphics.draw(vpet.sprites,vpet.spriteQuad,x,y)
+	api.blit(sx*4, sy*4, 4, 4, x, y)
 end
 
-function api.pix(x,y,c)
+function api.blit(srcx, srcy, w, h, destx, desty, src, dest, lcd)
+	lcd = lcd or 1 -- FIXME because hardcoding the first output as the lcd is bad mmkay
+	lcd = vpet.hw.output[lcd]
+	src = src or 2
+	dest = dest or 0
+	srcx = srcx or 0
+	srcy = srcy or 0
+	w = w or lcd.vrom.w
+	h = h or w or lcd.vrom.h
+	destx = destx or 0
+	desty = desty or 0
+	lcd.vrom.quad:setViewport(srcx, srcy, w, h)
+	lcd.vrom[dest]:renderTo(function()
+		love.graphics.draw(lcd.vrom[src], lcd.vrom.quad, destx, desty)
+	end)
+end
+
+function api.pix(x, y, c)
 	local oldc = {love.graphics.getColor()}
 	if c then
 		c = math.floor(c) % 2
@@ -544,18 +516,17 @@ function api.pix(x,y,c)
 	love.graphics.setColor(oldc)
 end
 
-function api.cls(c)
-	c=c or 0
-	c=math.floor(c)%2
-	love.graphics.clear(vpet.convertcolors[c])
+function api.cls(c, output)
+	c = c or 0
+	c = math.floor(c)%2
+	output = output or 1 -- FIXXXXXXXMEEEEEE
+	love.graphics.clear(vpet.hw.output[output].colors[c])
 end
 
 function api.led(value)
 	local led = vpet.hw.output[2]
-	if value == nil then
-		return led.on
-	else
+	if value ~= nil then
 		led.on = value and true or false
-		return led.on
 	end
+	return led.on
 end

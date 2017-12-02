@@ -50,6 +50,17 @@ These are also subject to change. One thing is, to combine update and draw into 
 
 Warning: This API is in early development, and is subject to change without warning. One change that will likely come is packaging it into a table, but that will be after some major reform.
 
+---
+`blit(api.blit(srcx, srcy, w, h, destx, desty, src, dest, lcd)`
+
+copies a rectangle of pixels from one page to another (or the same)
+
+TODO: explain this more
+
+---
+The following functions are going to be replaced eventually, but still work as of now. Consider them deprecated.
+---
+
 `drawsprite(sx, sy, x, y)`
 
 `sx, sy` selects which 4x4 tile to draw
@@ -64,4 +75,4 @@ If `color` is given, clears the main screen to that color, if not, clears it to 
 ---
 `led(on)`
 
-If `on` is given, turns the LED on for true and off for false. If not, returns whether the LED is on.
+If `on` is given, turns the LED on for true and off for false. Either way, returns whether the LED is on.
