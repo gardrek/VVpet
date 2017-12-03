@@ -1,11 +1,15 @@
 local emu = {}
 local vpet = {}
 local api = {}
+local mouse = {}
 
 function love.load()
 	-- Love set-up stuff
 	io.stdout:setvbuf('no') -- enable normal use of the print() command
 	love.graphics.setDefaultFilter('nearest', 'nearest', 0)
+
+	mouse.last_x, mouse.last_y = love.mouse.getPosition()
+	mouse.x, mouse.y = love.mouse.getPosition()
 
 	emu.cozy = 2
 	emu.center = {}
@@ -13,30 +17,6 @@ function love.load()
 	emu.bg = {}
 	emu.bg.image = love.graphics.newImage('bg.jpg')
 	emu.bg.x, emu.bg.y = 0, 0
-
-	-- set up sandbox environments
-	vpet.env = {}
-	vpet.hwenv = {}
-	local env_globals = {
-		-- Functions and variables
-		--'garbagecollect', 'dofile', '_G', 'getfenv', 'load', 'loadfile',
-		--'loadstring', 'setfenv', 'rawequal', 'rawget', 'rawset',
-		'assert', 'error', 'getmetatable', 'ipairs',
-		'next', 'pairs', 'pcall', 'print',
-		'select', 'tonumber', 'tostring', 'type',
-		'unpack', '_VERSION', 'xpcall',
-		-- Libraries
-		'math', 'table'
-	}
-	for i,v in ipairs(env_globals) do
-		vpet.env[v]=_G[v]
-		vpet.hwenv[v]=_G[v]
-	end
-	for k,v in pairs(api) do
-		vpet.env[k]=v
-	end
-	vpet.env._G = vpet.env
-	vpet.hwenv._G = vpet.hwenv
 
 	vpet.inputmap = {
 		-- system buttons - these buttons are handled differently when an app is run from inside another app
@@ -58,17 +38,60 @@ function love.load()
 		down = {'s', 'down', 'kp5'},
 	}
 
+	vpet.inputreversemap = {}
+
 	-- stores a table of which button inputs are down
 	vpet.input = {}
 
+	for k, v in pairs(vpet.inputmap) do
+		for iii, emukey in ipairs(v) do
+			vpet.inputreversemap[emukey] = k
+		end
+		vpet.input[k] = false
+	end
+
+	-- set up sandbox environments
+	vpet.env = {}
+	vpet.hwenv = {}
+	local env_globals = {
+		-- Functions and variables
+		--'garbagecollect', 'dofile', '_G', 'getfenv', 'load', 'loadfile',
+		--'loadstring', 'setfenv', 'rawequal', 'rawget', 'rawset',
+		'assert', 'error', 'getmetatable', 'ipairs',
+		'next', 'pairs', 'pcall', 'print',
+		'select', 'tonumber', 'tostring', 'type',
+		'unpack', '_VERSION', 'xpcall',
+		-- Libraries
+		'math', 'table'
+	}
+	for i,v in ipairs(env_globals) do
+		vpet.env[v]=_G[v]
+		vpet.hwenv[v]=_G[v]
+	end
+	vpet.env.vpet = {}
+	for k,v in pairs(api) do
+		vpet.env[k]=v
+		vpet.env.vpet[k]=v
+	end
+	vpet.env._G = vpet.env
+	vpet.hwenv._G = vpet.hwenv
+
+	vpet.env.vpet.btn = vpet.input -- TODO: FIXME: PROBABLY A BAD IDEA:::::::
+
 	-- load hardware
-	vpet.hw = vpet:loadhardware('hw/vpet64/')
+	vpet.hw = vpet:loadhardware('hw/vpet64_test/')
 
 	if not vpet.hw then
 		error('Base hardware failed to load!')
 	end
 
-	local spritefile = 'rom/sprites.png'
+	local cartfolder
+	cartfolder = 'carts/'
+	--cartfolder = 'rom/'
+	--cartfolder = cartfolder..'tictactoe/'
+	cartfolder = cartfolder..'pixelimagetest/'
+
+	local spritefile = cartfolder .. '/sprites.png'
 	if not love.filesystem.exists(spritefile) then
 		spritefile = 'rom/nocart.png'
 	end
@@ -77,6 +100,15 @@ function love.load()
 	end
 
 	if vpet.hw.output then
+		local num_lcds, num_leds = 0, 0
+		for i1, unit in ipairs(vpet.hw.output) do
+			if unit.type == 'lcd' then
+				num_lcds = num_lcds + 1
+			elseif unit.type == 'led' then
+				num_leds = num_leds + 1
+			end
+		end
+		print('LCDs:', num_lcds,'LEDs: ', num_leds)
 		for i1, unit in ipairs(vpet.hw.output) do
 			if unit.type == 'lcd' then
 				print('LCD unit '..i1..' loaded')
@@ -84,7 +116,6 @@ function love.load()
 				vpet:loadvrom(unit,2,spritefile)
 				for i2, subunit in ipairs(unit) do
 					if subunit.type == 'dotmatrix' then
-						--subunit.canvas = love.graphics.newCanvas(subunit.w, subunit.h, 'normal', 0)
 						subunit.canvas = unit.vrom[subunit.page]
 						subunit.canvas:renderTo(
 							function()
@@ -92,7 +123,7 @@ function love.load()
 							end
 						)
 					end
-					print('Subunit '..i2..', type '..subunit.type..', of LCD '..i1..' loaded')
+					print('Subunit '..i2..', type '..tostring(subunit.type)..', of LCD '..i1..' loaded')
 				end
 			elseif unit.type == 'led' then
 				unit.on = true
@@ -104,10 +135,6 @@ function love.load()
 		vpet.hw.base.minw = vpet.hw.base.minw or vpet.hw.base.w
 		vpet.hw.base.minh = vpet.hw.base.minh or vpet.hw.base.h
 	end
-
-	local cartfolder = 'carts/'
-	cartfolder='rom/'
-	--cartfolder = cartfolder..'tictactoe/'
 
 	-- load the cart script
 	local success
@@ -128,9 +155,82 @@ function love.load()
 end
 
 function love.update(dt)
+	vpet:updatemousecheap()
 	if cart.update and type(cart.update) == 'function' then
 		cart:update(dt)
 	end
+end
+
+function vpet:updatemousecheap()
+	local x1, y1, x2, y2
+	mouse.last_x, mouse.last_y = mouse.x, mouse.y
+	mouse.x, mouse.y = love.mouse.getPosition()
+	local was_pressed = mouse.down
+	mouse.down = love.mouse.isDown(1)
+	for key, obj in pairs(vpet.hw.input.buttons) do
+		x1, y1, x2, y2 =
+			emu.center.x + (obj.x - obj.w / 2) * emu.scale,
+			emu.center.y + (obj.y - obj.h / 2) * emu.scale,
+			emu.center.x + (obj.x + obj.w / 2) * emu.scale,
+			emu.center.y + (obj.y + obj.h / 2) * emu.scale
+		if mouse.x <= x2 and mouse.x > x1 and mouse.y <= y2 and mouse.y > y1 then
+			if mouse.down and not was_pressed then
+				mouse.pressed_key = key
+				mouse.pressed = true
+			end
+		end
+	end
+	if mouse.pressed then
+		vpet:setInput(mouse.pressed_key, true)
+		-- TODO: refactor this to be a check into a table of declared functions
+		mouse.pressed = false
+	elseif was_pressed and not mouse.down and mouse.pressed_key then
+		vpet:setInput(mouse.pressed_key, false)
+		-- TODO: refactor this to be a check into a table of declared functions
+	end
+end
+
+function vpet:updatemouse()
+	local x1, y1, x2, y2
+	local was_hovering = mouse.hovering
+	mouse.hovering = false
+	mouse.last_x, mouse.last_y = mouse.x, mouse.y
+	mouse.x, mouse.y = love.mouse.getPosition()
+	mouse.down = love.mouse.isDown(1)
+	for key, obj in pairs(vpet.hw.input.buttons) do
+		x1, y1, x2, y2 =
+			emu.center.x + (obj.x - obj.w / 2) * emu.scale,
+			emu.center.y + (obj.y - obj.h / 2) * emu.scale,
+			emu.center.x + (obj.x + obj.w / 2) * emu.scale,
+			emu.center.y + (obj.y + obj.h / 2) * emu.scale
+		if mouse.x <= x2 and mouse.x > x1 and mouse.y <= y2 and mouse.y > y1 then
+			mouse.hovering = true
+			if not (
+				mouse.last_x <= x2 and mouse.last_x > x1 and
+				mouse.last_y <= y2 and mouse.last_y > y1
+			) then
+				-- Starts hovering a button when the mouse button did not go down on another gui button
+				mouse.hover_key = key
+			elseif mouse.down and not mouse.pressed_key then
+				-- mouse button clicked gui button on this frame
+				mouse.pressed_key = key
+				mouse.holding = true
+				print(mouse.hover_key, mouse.pressed_key, mouse.holding)
+			elseif mouse.down and key == mouse.pressed_key then
+				mouse.holding = true
+			end
+		end
+	end
+	if not mouse.down then
+		mouse.pressed_key = false
+		mouse.holding = false
+	end
+	if was_hovering and not mouse.hovering then
+		-- Stops hovering any button.
+		mouse.hover_key = false
+		mouse.holding = false
+	end
+	print(mouse.hover_key, mouse.pressed_key, mouse.holding)
 end
 
 function love.draw()
@@ -205,15 +305,38 @@ function love.draw()
 						end
 						love.graphics.draw(
 							subunit.canvas,
+							subunit.quad,
 							emu.center.x + (unit.x + subunit.x - subunit.w / 2) * emu.scale,
 							emu.center.y + (unit.y + subunit.y - subunit.h / 2) * emu.scale,
 							0, emu.scale
 						)
+					elseif subunit.type == 'pixelimage' and subunit.quads then
+						local pixel = 0
+						local imagedata = unit.vrom[0]:newImageData()
+						for qi, quad in ipairs(subunit.quads) do
+							pixel = vpet:closest_color_index(unit.colors, imagedata:getPixel(qi, 0))
+							subunit.quad:setViewport(quad.x, quad.y + pixel * subunit.offset, quad.w, quad.h)
+							love.graphics.draw(
+								subunit.atlas,
+								subunit.quad,
+								emu.center.x + (unit.x + subunit.x + quad.x - unit.w / 2) * emu.scale,
+								emu.center.y + (unit.y + subunit.y + quad.y - unit.h / 2) * emu.scale,
+								0, emu.scale
+							)
+						end
 					end
 				end
 			end
 		end
 	end
+
+	---[[ DEBUG DRAW
+	love.graphics.draw(
+		vpet.hw.output[1][1].canvas,
+		0, 0,
+		0, emu.scale
+	)
+	--]]
 end
 
 function love.keypressed(key, scancode, isrepeat)
@@ -233,14 +356,17 @@ function love.keypressed(key, scancode, isrepeat)
 		end
 		--print(emu.cozy)
 		--print(key, 'pressed')
-		vpet.keyevent(key)
+		if vpet.inputreversemap[key] then
+			vpet:setInput(vpet.inputreversemap[key], true)
+		end
 	end
 end
 
 function love.keyreleased(key, scancode, isrepeat)
 	if not isrepeat then
-		--print(key, 'released')
-		vpet.keyevent(key, true)
+		if vpet.inputreversemap[key] then
+			vpet:setInput(vpet.inputreversemap[key], false)
+		end
 	end
 end
 
@@ -257,25 +383,37 @@ function love.resize(w, h)
 	emu.scale = math.max(scale - emu.cozy, 1)
 end
 
-function vpet.keyevent(key, released)
-	local changed=false
-	if cart.event and type(cart.event)=='function' then -- TODO: refactor this to be a check into a table of declared functions
-		for k,v in pairs(vpet.inputmap) do
-			changed=false
-			for i,bind in ipairs(v) do
-				if bind==key then
-					changed=true
-				end
-			end
-			if changed then
-				vpet.input[k] = not released
-				cart:event('button', {button = k, up = released, down = not released})
-			end
+function vpet:setInput(button, pressed)
+	if self.input[button] ~= pressed then
+		-- TODO: refactor this to be a check into a table of declared functions
+		if cart.event and type(cart.event)=='function' then
+			cart:event('button', {button = button, up = not pressed, down = pressed})
 		end
+		self.input[button] = pressed
 	end
 end
 
-function vpet:loadvrom(lcd,page,file)
+function vpet:closest_color_index(colors, r, g, b, a)
+	if type(r) == 'table' then
+		r, g, b, a = unpack(r)
+	end
+	if type(a) == nil then a = 0 end
+	a = a < 128 and 0 or 255
+	local distance
+	local closest = 0xffffff
+	local color
+	for i = 0, #colors do
+		v = colors[i]
+		distance = (v[1] - r) * (v[1] - r) + (v[2] - g) * (v[2] - g) + (v[3] - b) * (v[3] - b)
+		if distance < closest then
+			closest = distance
+			color = i
+		end
+	end
+	return color
+end
+
+function vpet:loadvrom(lcd, page, file)
 	local image, raw
 	if type(file) ~= 'string' then
 		image = file
@@ -420,6 +558,7 @@ function vpet:loadhardware(dir)
 	-- TODO: This function currently does VERY LITTLE checking that outputs are correctly formed
 	if hw.output then
 		loaded.output = {}
+		loaded.output.defaultlcd = false
 		local unit
 		for i1, o in ipairs(hw.output) do
 			if o.type then
@@ -435,6 +574,10 @@ function vpet:loadhardware(dir)
 				if o.type == 'led' then
 					load_images(unit, o, {'image_on', 'image_off'}, 'LED'..tostring(i1))
 				elseif o.type == 'lcd' then
+					if not loaded.output.defaultlcd then
+						loaded.output.defaultlcd = unit
+					end
+					unit.defaultdotmatrix = false
 					unit.bgcolor = o.bgcolor
 					unit.colors = o.colors
 					if o.vrom then
@@ -447,9 +590,27 @@ function vpet:loadhardware(dir)
 					local subunit
 					for i3, hw_subunit in ipairs(o) do
 						subunit = {type = hw_subunit.type}
-						if hw_subunit.type == 'dotmatrix' or hw_subunit.type == 'backlight' or hw_subunit.type == 'vrom' then
-							for key, value in pairs(hw_subunit) do
-								subunit[key] = value
+						if
+							subunit.type == 'dotmatrix' or
+							subunit.type == 'backlight' or
+							subunit.type == 'vrom' or
+							subunit.type == 'pixelimage' then
+								for key, value in pairs(hw_subunit) do
+									subunit[key] = value
+								end
+						end
+						if subunit.type == 'dotmatrix' then
+							if not unit.defaultdotmatrix then
+								unit.defaultdotmatrix = subunit
+							end
+							subunit.quad = love.graphics.newQuad(subunit.pagex, subunit.pagey, subunit.w, subunit.h, o.vrom.w, o.vrom.h)
+						end
+						if subunit.type == 'pixelimage' then
+							if subunit.atlas and subunit.quads then
+								subunit.atlas = love.graphics.newImage(dir..subunit.atlas)
+								local w, h = subunit.atlas:getWidth(), subunit.atlas:getHeight()
+								subunit.quad = love.graphics.newQuad(0, 0, w, h, w, h)
+								subunit.offset = h / 2
 							end
 						end
 						table.insert(unit, subunit)
@@ -481,15 +642,13 @@ function vpet:loadhardware(dir)
 end
 
 -- Following are the functions which can be called from within the script
--- TODO: also, make them better
-
-function api.drawsprite(sx,sy,x,y)
-	api.blit(sx*4, sy*4, 4, 4, x, y)
-end
 
 function api.blit(srcx, srcy, w, h, destx, desty, src, dest, lcd)
-	lcd = lcd or 1 -- FIXME because hardcoding the first output as the lcd is bad mmkay
-	lcd = vpet.hw.output[lcd]
+	if type(lcd) == 'number' then
+		lcd = vpet.hw.output[lcd]
+	elseif type(lcd) ~= 'table' then
+		lcd = vpet.hw.output.defaultlcd
+	end
 	src = src or 2
 	dest = dest or 0
 	srcx = srcx or 0
@@ -505,27 +664,40 @@ function api.blit(srcx, srcy, w, h, destx, desty, src, dest, lcd)
 end
 
 function api.pix(x, y, color, dest, lcd)
-	lcd = lcd or 1 -- FIXME because hardcoding the first output as the lcd is bad mmkay
-	lcd = vpet.hw.output[lcd]
-	dest = dest or 0
 	color = color or 1
+	dest = dest or 0
+	if type(lcd) == 'number' then
+		lcd = vpet.hw.output[lcd]
+	elseif type(lcd) ~= 'table' then
+		lcd = vpet.hw.output.defaultlcd
+	end
 	local oldc = {love.graphics.getColor()}
 	love.graphics.setColor(lcd.colors[color])
 	lcd.vrom[dest]:renderTo(function()
-		love.graphics.point(x, y)
+		love.graphics.points(x, y + 1) -- LOVE2D has an off-by-one error to account for here
 	end)
 	love.graphics.setColor(oldc)
 end
 
-function api.cls(c, dest, lcd)
-	c = c or 0
-	c = math.floor(c)%2
-	lcd = lcd or 1 -- FIXME: FIXXXXXXXMEEEEEE hardwired
-	lcd = vpet.hw.output[lcd]
+function api.rect(x, y, w, h, color, dest, lcd)
+	x = x or 0
+	y = y or 0
+	color = color or 0
 	dest = dest or 0
+	if type(lcd) == 'number' then
+		lcd = vpet.hw.output[lcd]
+	elseif type(lcd) ~= 'table' then
+		lcd = vpet.hw.output.defaultlcd
+	end
+	w = w or lcd.vrom.w
+	h = h or w or lcd.vrom.h
+	local oldc = {love.graphics.getColor()}
+	love.graphics.setColor(lcd.colors[color])
 	lcd.vrom[dest]:renderTo(function()
-		love.graphics.clear(lcd.colors[c])
+		--love.graphics.points(x, y + 1) -- LOVE2D has an off-by-one error to account for here
+		love.graphics.rectangle('fill', x, y, w, h)
 	end)
+	love.graphics.setColor(oldc)
 end
 
 function api.led(value)
@@ -534,4 +706,13 @@ function api.led(value)
 		led.on = value and true or false
 	end
 	return led.on
+end
+
+-- deprecated
+function api.cls(color, dest, lcd)
+	api.rect(0, 0, false, false, color, dest, lcd)
+end
+
+function api.drawsprite(sx,sy,x,y)
+	api.blit(sx*4, sy*4, 4, 4, x, y)
 end

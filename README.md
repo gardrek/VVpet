@@ -58,6 +58,12 @@ copies a rectangle of pixels from one page to another (or the same)
 TODO: explain this more
 
 ---
+`rect(x, y, w, h, color, dest, lcd)`
+
+fills a rectangle with a single color
+
+---
+
 The following functions are going to be replaced eventually, but still work as of now. Consider them deprecated.
 ---
 
