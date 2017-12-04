@@ -15,8 +15,11 @@ The main vPET has the following buttons, which are mapped to keys on the keyboar
 
 ## Files
 Currently, the files read for loading an application are:
+
 `cart.lua`
+
 `sprites.png`
+
 These must be in the same folder.
 
 In future versions, other files to be loaded will be specified in the lua script.
@@ -52,7 +55,14 @@ Below is a small sample program illustrating this. Note the `table:method` synta
     return game
 
 The following are the available callback functions:
-`draw()`, `update(dt)`, `event(type, data)`
+
+`draw()`
+
+`update(dt)`
+
+`event(type, data)`
+This is called when an event happens. Currently, the only event type is `'button'` and it's data structure is `{button , up , down}`
+`button` is one of the button strings: `'back'`, `'home'`, `'1'`, `'2'`, `'3'`, `'left'`, `'right'`, `'up'`, and `'down'`. `'up` and `'down'` are booleans, giving whether the button is up or down. `'up'` is always the opposite of `'down'`.
 
 These are also subject to change. One thing is, to combine update and draw into one, if possible.
 
@@ -78,7 +88,8 @@ fills a rectangle with a single color
 
 ---
 
-The following functions are going to be replaced eventually, but still work as of now. Consider them deprecated.
+The following functions are deprecated.
+
 ---
 
 `drawsprite(sx, sy, x, y)`

@@ -2,11 +2,14 @@ local game = {}
 
 local n = 0
 local bgcolor = 0
+local offset = 0
+
+function game:update(dt)
+	n = n + dt * 90
+end
 
 function game:draw()
 	cls(bgcolor)
-	n = n + 1
-	local offset
 	for yi = 0, 15 do
 		for xi = 0, 15 do
 			offset = -math.floor(math.sin((n - yi * 4)/17) * 4)

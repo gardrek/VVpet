@@ -14,13 +14,15 @@ function love.load()
 	emu.cozy = 2
 	emu.center = {}
 	emu.scale = 4
-	emu.bg = {}
-	emu.bg.image = love.graphics.newImage('bg.jpg')
-	emu.bg.x, emu.bg.y = 0, 0
+	emu.bg = {
+		x = 0,
+		y = 0,
+		image = love.graphics.newImage('bg.jpg')
+	}
 
 	vpet.inputmap = {
 		-- system buttons - these buttons are handled differently when an app is run from inside another app
-		back = {'backspace', 'tab'}, -- use to return to a previous screen or cancel something. TODO: hold for x seconds to send home key press, hold for x + y seconds to force-close app
+		back = {'backspace', 'tab'}, -- use to return to a previous screen or cancel something. TODO: hold for x seconds to send home key press, hold for y more seconds to force-close app
 		home = {'escape', 'r'}, -- TODO: pressing home pauses/exits the app, returning to the calling app. long press force-quits the app. If the app is the top-level app, a force quit will restart the app
 		reset = {'f10'}, -- TODO: reset pinhole, clears all user data
 		-- screen buttons - numbered left to right
@@ -38,16 +40,16 @@ function love.load()
 		down = {'s', 'down', 'kp5'},
 	}
 
-	vpet.inputreversemap = {}
-
 	-- stores a table of which button inputs are down
 	vpet.input = {}
 
-	for k, v in pairs(vpet.inputmap) do
-		for iii, emukey in ipairs(v) do
-			vpet.inputreversemap[emukey] = k
+	vpet.inputreversemap = {} -- Oh, I'm not like the input at all... Some would say, I'm the reverse.
+
+	for button, vvv in pairs(vpet.inputmap) do
+		for iii, emukey in ipairs(vvv) do
+			vpet.inputreversemap[emukey] = button
 		end
-		vpet.input[k] = false
+		vpet.input[button] = false
 	end
 
 	-- set up sandbox environments
@@ -76,27 +78,19 @@ function love.load()
 	vpet.env._G = vpet.env
 	vpet.hwenv._G = vpet.hwenv
 
-	vpet.env.vpet.btn = vpet.input -- TODO: FIXME: PROBABLY A BAD IDEA:::::::
+	-- hardware uses these variables to load _other_ hardware
+	vpet.hwenv.dofile = _G.dofile
+	vpet.hwenv.hwdir = 'hw/'
+
+	vpet.env.vpet.btn = vpet:readonlytable(vpet.input) -- This way, apps can't spoof the table, hopefully
 
 	-- load hardware
-	vpet.hw = vpet:loadhardware('hw/vpet64_test/')
+	vpet.hw = vpet:loadhardware('vpet64.lua', vpet.hwdir)
+
+	--vpet.hw = vpet:loadhardware('hw/vpet64_test/')
 
 	if not vpet.hw then
 		error('Base hardware failed to load!')
-	end
-
-	local cartfolder
-	cartfolder = 'carts/'
-	--cartfolder = 'rom/'
-	--cartfolder = cartfolder..'tictactoe/'
-	cartfolder = cartfolder..'pixelimagetest/'
-
-	local spritefile = cartfolder .. '/sprites.png'
-	if not love.filesystem.exists(spritefile) then
-		spritefile = 'rom/nocart.png'
-	end
-	if not love.filesystem.exists(spritefile) then
-		spritefile = love.graphics.newImage(love.image.newImageData(64, 64))
 	end
 
 	if vpet.hw.output then
@@ -112,16 +106,9 @@ function love.load()
 		for i1, unit in ipairs(vpet.hw.output) do
 			if unit.type == 'lcd' then
 				print('LCD unit '..i1..' loaded')
-				unit.vrom.quad = love.graphics.newQuad(0, 0, unit.vrom.w, unit.vrom.h, unit.vrom.w, unit.vrom.h)
-				vpet:loadvrom(unit,2,spritefile)
+				unit.vram.quad = love.graphics.newQuad(0, 0, unit.vram.w, unit.vram.h, unit.vram.w, unit.vram.h)
 				for i2, subunit in ipairs(unit) do
 					if subunit.type == 'dotmatrix' then
-						subunit.canvas = unit.vrom[subunit.page]
-						subunit.canvas:renderTo(
-							function()
-								love.graphics.clear(unit.colors[0])
-							end
-						)
 					end
 					print('Subunit '..i2..', type '..tostring(subunit.type)..', of LCD '..i1..' loaded')
 				end
@@ -136,7 +123,27 @@ function love.load()
 		vpet.hw.base.minh = vpet.hw.base.minh or vpet.hw.base.h
 	end
 
-	-- load the cart script
+	-- load the cart script and sprites
+
+	local cartfolder
+	cartfolder = 'carts/'
+	--cartfolder = cartfolder..'tictactoe/'
+	cartfolder = cartfolder..'pixelimagetest/'
+
+	cartfolder = 'rom/'
+
+	local spritefile = cartfolder .. '/sprites.png'
+	if not love.filesystem.exists(spritefile) then
+		spritefile = 'rom/nocart.png'
+	end
+	if not love.filesystem.exists(spritefile) then
+		spritefile = love.graphics.newImage(love.image.newImageData(64, 64))
+	end
+
+	if vpet.hw.output.defaultlcd then
+		vpet:initvram(vpet.hw.output.defaultlcd, 2, spritefile)
+	end
+
 	local success
 	success, cart = vpet:loadscript(cartfolder..'cart.lua')
 	if success then
@@ -295,16 +302,15 @@ function love.draw()
 				for subindex, subunit in ipairs(unit) do
 					if subunit.type == 'dotmatrix' then
 						love.graphics.setColor(0xff, 0xff, 0xff, 0xff)
-						--TODO: fix this and add support for more than one matrix/output type
-						if index == 1 then
-							subunit.canvas:renderTo(function()
-								if cart.draw and type(cart.draw) == 'function' then
-									cart:draw()
-								end
-							end)
+						--[[
+						subunit.canvas:renderTo(function()
+						end)
+						--]]
+						if cart.draw and type(cart.draw) == 'function' then
+							cart:draw()
 						end
 						love.graphics.draw(
-							subunit.canvas,
+							unit.vram[subunit.page],
 							subunit.quad,
 							emu.center.x + (unit.x + subunit.x - subunit.w / 2) * emu.scale,
 							emu.center.y + (unit.y + subunit.y - subunit.h / 2) * emu.scale,
@@ -312,7 +318,7 @@ function love.draw()
 						)
 					elseif subunit.type == 'pixelimage' and subunit.quads then
 						local pixel = 0
-						local imagedata = unit.vrom[0]:newImageData()
+						local imagedata = unit.vram[0]:newImageData()
 						for qi, quad in ipairs(subunit.quads) do
 							pixel = vpet:closest_color_index(unit.colors, imagedata:getPixel(qi, 0))
 							subunit.quad:setViewport(quad.x, quad.y + pixel * subunit.offset, quad.w, quad.h)
@@ -332,7 +338,7 @@ function love.draw()
 
 	---[[ DEBUG DRAW
 	love.graphics.draw(
-		vpet.hw.output[1][1].canvas,
+		vpet.hw.output.defaultlcd.vram[0],
 		0, 0,
 		0, emu.scale
 	)
@@ -413,16 +419,41 @@ function vpet:closest_color_index(colors, r, g, b, a)
 	return color
 end
 
-function vpet:loadvrom(lcd, page, file)
-	local image, raw
-	if type(file) ~= 'string' then
-		image = file
-	elseif file then
-		image = love.graphics.newImage(file)
-	else
-		--image = love.graphics.newImage()
+function vpet:readonlytable(table)
+   return setmetatable({}, {
+     __index = table,
+     __newindex = function(table, key, value)
+                    error("Attempt to modify read-only table")
+                  end,
+     __metatable = false
+   });
+end
+
+function vpet:initvram(lcd, page, image)
+	lcd.vram[page] = love.graphics.newCanvas(lcd.vram.w, lcd.vram.h)
+	if image then
+		image = self:loadforvram(lcd, page, image)
 	end
-	raw = image:getData()
+	lcd.vram[page]:renderTo(function()
+		if image then
+			love.graphics.draw(image)
+		else
+			local oldc = {love.graphics.getColor()}
+			love.graphics.setColor(lcd.colors[0])
+			love.graphics.rectangle('fill', 0, 0, lcd.vram.w, lcd.vram.h)
+			love.graphics.setColor(oldc)
+		end
+	end)
+end
+
+function vpet:loadforvram(lcd, page, image)
+	local raw
+	if type(image) == 'string' then
+		image = love.graphics.newImage(image)
+		raw = image:getData()
+	else
+		raw = image:getData()
+	end
 	raw:mapPixel(
 		function(x, y, r, g, b, a)
 			a = a < 128 and 0 or 255
@@ -439,7 +470,7 @@ function vpet:loadvrom(lcd, page, file)
 			return color[1], color[2], color[3], a
 		end
 	)
-	lcd.vrom[page] = love.graphics.newImage(raw)
+	return love.graphics.newImage(raw)
 end
 
 function vpet:loadscript(script, env)
@@ -457,14 +488,18 @@ function vpet:loadscript(script, env)
 	local ok, f = pcall(love.filesystem.load, script)
 	if not ok then print('script '..script..' failed to load: script error') return false, f end
 	setfenv(f, env or self.env)
+	print('script '..script..' loaded')
 	return pcall(f)
 end
 
-function vpet:loadhardware(dir)
-	local success, hw, error = vpet:loadscript(dir..'/hw.lua', self.hwenv)
-	local loaded = {dir = dir}
+function vpet:loadhardware(file, dir)
+	dir = dir or self.hwenv.hwdir
+
+	local success, hw, error = vpet:loadscript(dir..file, self.hwenv)
+	local loaded = {}
+	--loaded.dir = dir
 	local hw_errors = 0
-	local id = dir
+	local id = dir..file
 	local file
 
 	function finish(...)
@@ -481,25 +516,36 @@ function vpet:loadhardware(dir)
 	end
 
 	function load_images(dest, source, names, errormessage)
+		-- TODO: refactor this function: DRY
 		if not names then
 			for i, v in ipairs(source) do
-				file = dir..v
-				if love.filesystem.exists(file) then
-					dest[i] = love.graphics.newImage(file)
+				if type(v) == 'string' then
+					file = dir..v
+					if love.filesystem.exists(file) then
+						dest[i] = love.graphics.newImage(file)
+					else
+						print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
+						hw_errors = hw_errors + 1
+					end
 				else
-					print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
-					hw_errors = hw_errors + 1
+					dest[i] = false
+					print('hardware '..id..': '..errormessage..' image: "'..tostring(v)..'" not a string')
 				end
 			end
 		else
 			for i, v in ipairs(names) do
-				if source[v] then
-					file = dir..source[v]
-					if love.filesystem.exists(file) then
-						dest[v] = love.graphics.newImage(file)
+				if type(v) == 'string' then
+					if source[v] then
+						file = dir..source[v]
+						if love.filesystem.exists(file) then
+							dest[v] = love.graphics.newImage(file)
+						else
+							print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
+							hw_errors = hw_errors + 1
+						end
 					else
-						print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
-						hw_errors = hw_errors + 1
+						dest[v] = false
+						print('hardware '..id..': '..errormessage..' image: "'..tostring(v)..'" not a string')
 					end
 				end
 			end
@@ -508,11 +554,12 @@ function vpet:loadhardware(dir)
 
 	if not success then
 		hw_errors = -1
+		print(hw, error)
 		return finish(false, error)
 	end
 
 	if type(hw) ~='table' then
-		print('hardware descriptor script in "'..dir..'" returned '..type(hw)..', not table.')
+		print('hardware descriptor script "'..id..'" returned '..type(hw)..', not table.')
 		hw_errors = -1
 		return finish(false, hw)
 	end
@@ -559,6 +606,7 @@ function vpet:loadhardware(dir)
 	if hw.output then
 		loaded.output = {}
 		loaded.output.defaultlcd = false
+		loaded.output.defaultled = false
 		local unit
 		for i1, o in ipairs(hw.output) do
 			if o.type then
@@ -572,6 +620,9 @@ function vpet:loadhardware(dir)
 					end
 				end
 				if o.type == 'led' then
+					if not loaded.output.defaultled then
+						loaded.output.defaultled = unit
+					end
 					load_images(unit, o, {'image_on', 'image_off'}, 'LED'..tostring(i1))
 				elseif o.type == 'lcd' then
 					if not loaded.output.defaultlcd then
@@ -580,12 +631,15 @@ function vpet:loadhardware(dir)
 					unit.defaultdotmatrix = false
 					unit.bgcolor = o.bgcolor
 					unit.colors = o.colors
-					if o.vrom then
-						unit.vrom = {}
-						unit.vrom.w = o.vrom.w
-						unit.vrom.h = o.vrom.h
-						unit.vrom[0] = love.graphics.newCanvas(unit.vrom.w, unit.vrom.h, 'normal', 0)
-						load_images(unit.vrom, o.vrom, nil, 'VROM')
+					if o.vram then
+						unit.vram = {}
+						unit.vram.w = o.vram.w
+						unit.vram.h = o.vram.h
+						vpet:initvram(unit, 0)
+						load_images(unit.vram, o.vram, nil, 'vram')
+						for pagenum, image in ipairs(unit.vram) do
+							vpet:initvram(unit, pagenum, image)
+						end
 					end
 					local subunit
 					for i3, hw_subunit in ipairs(o) do
@@ -593,7 +647,6 @@ function vpet:loadhardware(dir)
 						if
 							subunit.type == 'dotmatrix' or
 							subunit.type == 'backlight' or
-							subunit.type == 'vrom' or
 							subunit.type == 'pixelimage' then
 								for key, value in pairs(hw_subunit) do
 									subunit[key] = value
@@ -603,9 +656,8 @@ function vpet:loadhardware(dir)
 							if not unit.defaultdotmatrix then
 								unit.defaultdotmatrix = subunit
 							end
-							subunit.quad = love.graphics.newQuad(subunit.pagex, subunit.pagey, subunit.w, subunit.h, o.vrom.w, o.vrom.h)
-						end
-						if subunit.type == 'pixelimage' then
+							subunit.quad = love.graphics.newQuad(subunit.pagex, subunit.pagey, subunit.w, subunit.h, o.vram.w, o.vram.h)
+						elseif subunit.type == 'pixelimage' then
 							if subunit.atlas and subunit.quads then
 								subunit.atlas = love.graphics.newImage(dir..subunit.atlas)
 								local w, h = subunit.atlas:getWidth(), subunit.atlas:getHeight()
@@ -653,13 +705,13 @@ function api.blit(srcx, srcy, w, h, destx, desty, src, dest, lcd)
 	dest = dest or 0
 	srcx = srcx or 0
 	srcy = srcy or 0
-	w = w or lcd.vrom.w
-	h = h or w or lcd.vrom.h
+	w = w or lcd.vram.w
+	h = h or w or lcd.vram.h
 	destx = destx or 0
 	desty = desty or 0
-	lcd.vrom.quad:setViewport(srcx, srcy, w, h)
-	lcd.vrom[dest]:renderTo(function()
-		love.graphics.draw(lcd.vrom[src], lcd.vrom.quad, destx, desty)
+	lcd.vram.quad:setViewport(srcx, srcy, w, h)
+	lcd.vram[dest]:renderTo(function()
+		love.graphics.draw(lcd.vram[src], lcd.vram.quad, destx, desty)
 	end)
 end
 
@@ -673,7 +725,7 @@ function api.pix(x, y, color, dest, lcd)
 	end
 	local oldc = {love.graphics.getColor()}
 	love.graphics.setColor(lcd.colors[color])
-	lcd.vrom[dest]:renderTo(function()
+	lcd.vram[dest]:renderTo(function()
 		love.graphics.points(x, y + 1) -- LOVE2D has an off-by-one error to account for here
 	end)
 	love.graphics.setColor(oldc)
@@ -689,11 +741,11 @@ function api.rect(x, y, w, h, color, dest, lcd)
 	elseif type(lcd) ~= 'table' then
 		lcd = vpet.hw.output.defaultlcd
 	end
-	w = w or lcd.vrom.w
-	h = h or w or lcd.vrom.h
+	w = w or lcd.vram.w
+	h = h or w or lcd.vram.h
 	local oldc = {love.graphics.getColor()}
 	love.graphics.setColor(lcd.colors[color])
-	lcd.vrom[dest]:renderTo(function()
+	lcd.vram[dest]:renderTo(function()
 		--love.graphics.points(x, y + 1) -- LOVE2D has an off-by-one error to account for here
 		love.graphics.rectangle('fill', x, y, w, h)
 	end)
@@ -701,7 +753,7 @@ function api.rect(x, y, w, h, color, dest, lcd)
 end
 
 function api.led(value)
-	local led = vpet.hw.output[2] -- FIXME: FIXXXXXXXMEEEEEE hardwired
+	local led = vpet.hw.output.defaultled
 	if value ~= nil then
 		led.on = value and true or false
 	end
