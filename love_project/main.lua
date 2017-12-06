@@ -6,7 +6,7 @@ local mouse = {}
 function love.load()
 	-- Love set-up stuff
 	io.stdout:setvbuf('no') -- enable normal use of the print() command
-	love.graphics.setDefaultFilter('nearest', 'nearest', 0)
+	love.graphics.setDefaultFilter('nearest', 'nearest', 0) -- Pixel scaling
 
 	mouse.last_x, mouse.last_y = love.mouse.getPosition()
 	mouse.x, mouse.y = love.mouse.getPosition()
@@ -23,21 +23,21 @@ function love.load()
 	vpet.inputmap = {
 		-- system buttons - these buttons are handled differently when an app is run from inside another app
 		back = {'backspace', 'tab'}, -- use to return to a previous screen or cancel something. TODO: hold for x seconds to send home key press, hold for y more seconds to force-close app
-		home = {'escape', 'r'}, -- TODO: pressing home pauses/exits the app, returning to the calling app. long press force-quits the app. If the app is the top-level app, a force quit will restart the app
+		home = {'r'}, -- TODO: pressing home pauses/exits the app, returning to the calling app. long press force-quits the app. If the app is the top-level app, a force quit will restart the app
 		reset = {'f10'}, -- TODO: reset pinhole, clears all user data
 		-- screen buttons - numbered left to right
-		['1'] = {'1', 'z', 'kp1'},
-		['2'] = {'2', 'x', 'kp2'},
-		['3'] = {'3', 'c', 'kp3'},
+		['1'] = {'1', 'z'},
+		['2'] = {'2', 'x', 'return', 'kpenter'},
+		['3'] = {'3', 'c'},
 		-- action buttons are assigned a letter, starting with 'a' for the most-used button
 		-- NOTE: The standard vPET does not have action buttons
 		a = {'n'},
 		b = {'b'},
 		-- direction buttons:
-		left = {'a', 'left', 'kp4'},
-		right = {'d', 'right', 'kp6'},
-		up = {'w', 'up', 'kp8'},
-		down = {'s', 'down', 'kp5'},
+		left = {'a', 'left'},
+		right = {'d', 'right'},
+		up = {'w', 'up'},
+		down = {'s', 'down'},
 	}
 
 	-- stores a table of which button inputs are down
@@ -47,14 +47,17 @@ function love.load()
 
 	for button, vvv in pairs(vpet.inputmap) do
 		for iii, emukey in ipairs(vvv) do
+			-- Put in a keyboard key and it gives you the button that key is assigned to
 			vpet.inputreversemap[emukey] = button
 		end
+		-- FIXME: This is actually important, I think, so I should explain why here, but I forgot why
 		vpet.input[button] = false
 	end
 
 	-- set up sandbox environments
-	vpet.env = {}
-	vpet.hwenv = {}
+	--vpet.osenv = {} -- The OS would conceivably need access to a different environment
+	vpet.env = {} -- this is used when loading apps
+	vpet.hwenv = {} -- this is used when loading hardware
 	local env_globals = {
 		-- Functions and variables
 		--'garbagecollect', 'dofile', '_G', 'getfenv', 'load', 'loadfile',
@@ -72,8 +75,9 @@ function love.load()
 	end
 	vpet.env.vpet = {}
 	for k,v in pairs(api) do
-		vpet.env[k]=v
-		vpet.env.vpet[k]=v
+		-- TODO: Deprecate and remove one of the next two lines
+		vpet.env[k] = v
+		vpet.env.vpet[k] = v
 	end
 	vpet.env._G = vpet.env
 	vpet.hwenv._G = vpet.hwenv
@@ -82,55 +86,28 @@ function love.load()
 	vpet.hwenv.dofile = _G.dofile
 	vpet.hwenv.hwdir = 'hw/'
 
-	vpet.env.vpet.btn = vpet:readonlytable(vpet.input) -- This way, apps can't spoof the table, hopefully
+	vpet.env.vpet.btn = vpet:readonlytable(vpet.input) -- This way, apps can't spoof the table
 
-	-- load hardware
-	vpet.hw = vpet:loadhardware('vpet64.lua', vpet.hwdir)
+	-- load hardware --------
 
-	--vpet.hw = vpet:loadhardware('hw/vpet64_test/')
+	--vpet.hw = vpet:loadhardware('vpet64.lua', vpet.hwdir)
+	--vpet.hw = vpet:loadhardware('vpet48.lua', vpet.hwdir)
+	vpet.hw = vpet:loadhardware('vpet_supertest.lua', vpet.hwdir)
 
 	if not vpet.hw then
 		error('Base hardware failed to load!')
 	end
 
-	if vpet.hw.output then
-		local num_lcds, num_leds = 0, 0
-		for i1, unit in ipairs(vpet.hw.output) do
-			if unit.type == 'lcd' then
-				num_lcds = num_lcds + 1
-			elseif unit.type == 'led' then
-				num_leds = num_leds + 1
-			end
-		end
-		print('LCDs:', num_lcds,'LEDs: ', num_leds)
-		for i1, unit in ipairs(vpet.hw.output) do
-			if unit.type == 'lcd' then
-				print('LCD unit '..i1..' loaded')
-				unit.vram.quad = love.graphics.newQuad(0, 0, unit.vram.w, unit.vram.h, unit.vram.w, unit.vram.h)
-				for i2, subunit in ipairs(unit) do
-					if subunit.type == 'dotmatrix' then
-					end
-					print('Subunit '..i2..', type '..tostring(subunit.type)..', of LCD '..i1..' loaded')
-				end
-			elseif unit.type == 'led' then
-				unit.on = true
-			end
-		end
-	end
+	love.resize()
 
-	if vpet.hw.base then
-		vpet.hw.base.minw = vpet.hw.base.minw or vpet.hw.base.w
-		vpet.hw.base.minh = vpet.hw.base.minh or vpet.hw.base.h
-	end
-
-	-- load the cart script and sprites
+	-- load the software --------
 
 	local cartfolder
 	cartfolder = 'carts/'
 	--cartfolder = cartfolder..'tictactoe/'
 	cartfolder = cartfolder..'pixelimagetest/'
 
-	cartfolder = 'rom/'
+	--cartfolder = 'rom/'
 
 	local spritefile = cartfolder .. '/sprites.png'
 	if not love.filesystem.exists(spritefile) then
@@ -158,7 +135,8 @@ function love.load()
 		end
 	end
 
-	love.resize()
+	--success, cart = vpet:loadscript('rom/showvram.lua')
+	vpet:initvram(vpet.hw.output.defaultlcd, 2, 'hw/pika/pika.png')
 end
 
 function love.update(dt)
@@ -243,7 +221,6 @@ end
 function love.draw()
 	love.graphics.setColor(0xff, 0xff, 0xff, 0xff)
 
-
 	-- scenery background image
 	love.graphics.draw(
 		emu.bg.image,
@@ -269,8 +246,8 @@ function love.draw()
 			if image then
 				love.graphics.draw(
 					image,
-					emu.center.x + (v.x - v.w / 2) * emu.scale,
-					emu.center.y + (v.y - v.h / 2) * emu.scale,
+					emu.center.x + (v.x - image:getWidth() / 2) * emu.scale,
+					emu.center.y + (v.y - image:getHeight() / 2) * emu.scale,
 					0, emu.scale
 				)
 			end
@@ -299,13 +276,9 @@ function love.draw()
 					emu.center.y + (unit.y - unit.h / 2) * emu.scale,
 					unit.w * emu.scale, unit.h * emu.scale
 				)
+				love.graphics.setColor(0xff, 0xff, 0xff, 0xff)
 				for subindex, subunit in ipairs(unit) do
 					if subunit.type == 'dotmatrix' then
-						love.graphics.setColor(0xff, 0xff, 0xff, 0xff)
-						--[[
-						subunit.canvas:renderTo(function()
-						end)
-						--]]
 						if cart.draw and type(cart.draw) == 'function' then
 							cart:draw()
 						end
@@ -336,18 +309,20 @@ function love.draw()
 		end
 	end
 
-	---[[ DEBUG DRAW
-	love.graphics.draw(
-		vpet.hw.output.defaultlcd.vram[0],
-		0, 0,
-		0, emu.scale
-	)
-	--]]
+	if vpet.DEBUG then
+		love.graphics.draw(
+			vpet.hw.output.defaultlcd.vram[0],
+			0, 0,
+			0, emu.scale
+		)
+	end
 end
 
 function love.keypressed(key, scancode, isrepeat)
 	if not isrepeat then
-		if key == '9' then
+		if key == '8' then
+			vpet.DEBUG = not vpet.DEBUG
+		elseif key == '9' then
 			emu.cozy = emu.cozy - 1
 			if emu.cozy < 0 then
 				emu.cozy = 0
@@ -420,13 +395,14 @@ function vpet:closest_color_index(colors, r, g, b, a)
 end
 
 function vpet:readonlytable(table)
-   return setmetatable({}, {
-     __index = table,
-     __newindex = function(table, key, value)
-                    error("Attempt to modify read-only table")
-                  end,
-     __metatable = false
-   });
+	return setmetatable({}, {
+		__index = table,
+		__newindex =
+			function(table, key, value)
+				error('Attempt to modify read-only table')
+			end,
+		__metatable = false
+	});
 end
 
 function vpet:initvram(lcd, page, image)
@@ -499,23 +475,29 @@ function vpet:loadhardware(file, dir)
 	local loaded = {}
 	--loaded.dir = dir
 	local hw_errors = 0
+	local hw_warnings = 0
 	local id = dir..file
 	local file
 
 	function finish(...)
+		local s = 'Hardware '..id
 		if hw_errors == 0 then
-			print('Hardware '..id..' loaded with no errors.')
+			s = s..' loaded with no errors'
 		elseif hw_errors == -1 then
-			print('Hardware '..id..' failed to load.')
+			s = s..' failed to load'
 		elseif hw_errors < 0 then
-			print('Hardware '..id..' loaded with negative zero errors. :P')
+			s = s..' loaded with negative zero errors. :P'
 		else
-			print('Hardware '..id..' loaded with '..hw_errors..' errors.')
+			s = s..' loaded with '..hw_errors..' errors'
 		end
+		if hw_warnings > 0 then
+			s = s..' ('..hw_warnings..' warnings)'
+		end
+		print(s)
 		return ...
 	end
 
-	function load_images(dest, source, names, errormessage)
+	function old_load_images(dest, source, names, errormessage)
 		-- TODO: refactor this function: DRY
 		if not names then
 			for i, v in ipairs(source) do
@@ -527,9 +509,10 @@ function vpet:loadhardware(file, dir)
 						print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
 						hw_errors = hw_errors + 1
 					end
-				else
+				elseif v then
 					dest[i] = false
 					print('hardware '..id..': '..errormessage..' image: "'..tostring(v)..'" not a string')
+					hw_warnings = hw_warnings + 1
 				end
 			end
 		else
@@ -543,9 +526,54 @@ function vpet:loadhardware(file, dir)
 							print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
 							hw_errors = hw_errors + 1
 						end
-					else
+					elseif v then
 						dest[v] = false
 						print('hardware '..id..': '..errormessage..' image: "'..tostring(v)..'" not a string')
+						hw_warnings = hw_warnings + 1
+					end
+				end
+			end
+		end
+	end
+
+	function load_images(dest, source, names, errormessage)
+		-- If given an array of keys (names), checks (source) for each key,
+		-- and if found, attempts to load that keys value as an image, then
+		-- stores the image in the same key in (dest)
+		-- If (names) is _not_ given, it treats (source) as an array, and
+		-- stores in (dest) as an array
+		local file
+		if not names then
+			for i, v in ipairs(source) do
+				if type(v) == 'string' then
+					file = dir..v
+					if love.filesystem.exists(file) then
+						dest[i] = love.graphics.newImage(file)
+					else
+						print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
+						hw_errors = hw_errors + 1
+					end
+				elseif v then
+					dest[i] = false
+					print('hardware '..id..': '..errormessage..' image: "'..tostring(v)..'" not a string')
+					hw_warnings = hw_warnings + 1
+				end
+			end
+		else
+			for i, v in ipairs(names) do
+				if type(v) == 'string' then
+					if source[v] then
+						file = dir..source[v]
+						if love.filesystem.exists(file) then
+							dest[v] = love.graphics.newImage(file)
+						else
+							print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
+							hw_errors = hw_errors + 1
+						end
+					elseif v then
+						dest[v] = false
+						--print('hardware '..id..': '..errormessage..' image: "'..tostring(v)..'" not a string')
+						hw_warnings = hw_warnings + 1
 					end
 				end
 			end
@@ -576,21 +604,29 @@ function vpet:loadhardware(file, dir)
 
 	if hw.info then
 		id = hw.info.name or dir
-		loaded.info = hw.info
+		loaded.info = {}
+		for key, val in pairs(hw.info) do
+			loaded.info[key] = val
+		end
 	end
+
 	if hw.base then
 		loaded.base = {}
 		local malformed = false
-		for i,v in ipairs{'x', 'y', 'w', 'h', 'minw', 'minh'} do
+		for i, v in ipairs{'x', 'y', 'w', 'h', 'minw', 'minh'} do
 			if hw.base[v] then
 				loaded.base[v] = hw.base[v]
 			else
 				hw_errors = hw_errors + 1
 				malformed = true
-				loaded.base[v] =  i <= 2 and 0 or 20
-				-- the line above makes the base geometry pretty small but at least it errors so you know. also HAAAX
 			end
 		end
+		loaded.base.x = loaded.base.x or 0
+		loaded.base.y = loaded.base.y or loaded.base.x or 0
+		loaded.base.w = loaded.base.w or 64
+		loaded.base.h = loaded.base.h or loaded.base.w or 64
+		loaded.base.minw = loaded.base.minw or loaded.base.w
+		loaded.base.minh = loaded.base.minh or loaded.base.h
 		file = dir..hw.base.image
 		if love.filesystem.exists(file) then
 			loaded.base.image = love.graphics.newImage(file)
@@ -602,6 +638,7 @@ function vpet:loadhardware(file, dir)
 			print('hardware '..id..': base geometry malformed')
 		end
 	end
+
 	-- TODO: This function currently does VERY LITTLE checking that outputs are correctly formed
 	if hw.output then
 		loaded.output = {}
@@ -635,18 +672,19 @@ function vpet:loadhardware(file, dir)
 						unit.vram = {}
 						unit.vram.w = o.vram.w
 						unit.vram.h = o.vram.h
+						unit.vram.quad = love.graphics.newQuad(0, 0, unit.vram.w, unit.vram.h, unit.vram.w, unit.vram.h)
 						vpet:initvram(unit, 0)
 						load_images(unit.vram, o.vram, nil, 'vram')
 						for pagenum, image in ipairs(unit.vram) do
 							vpet:initvram(unit, pagenum, image)
 						end
 					end
+					-- TODO: Handle backlight here
 					local subunit
 					for i3, hw_subunit in ipairs(o) do
 						subunit = {type = hw_subunit.type}
 						if
 							subunit.type == 'dotmatrix' or
-							subunit.type == 'backlight' or
 							subunit.type == 'pixelimage' then
 								for key, value in pairs(hw_subunit) do
 									subunit[key] = value
@@ -674,6 +712,7 @@ function vpet:loadhardware(file, dir)
 			end
 		end
 	end
+
 	if hw.input then
 		loaded.input = {}
 		if hw.input.buttons then
@@ -690,19 +729,55 @@ function vpet:loadhardware(file, dir)
 		end
 	end
 
+	local geometry_default = {
+		x = 0, y = 0,
+		w = 8, h = 8,
+		scale = 1,
+	}
+
+	function set_defaults(unit, default)
+		default = default or geometry_default
+		for k, v in pairs(default) do
+			if not unit[k] then
+				unit[k] = v
+				hw_warnings = hw_warnings + 1
+			end
+		end
+	end
+
+	for index, unit in ipairs(loaded.output) do
+		if unit.type == 'led' then
+			
+		end
+	end
+
 	return finish(loaded)
 end
 
--- Following are the functions which can be called from within the script
-
-function api.blit(srcx, srcy, w, h, destx, desty, src, dest, lcd)
+function select_vram_page(page, lcd)
+	local lcd_raw = lcd
 	if type(lcd) == 'number' then
 		lcd = vpet.hw.output[lcd]
 	elseif type(lcd) ~= 'table' then
 		lcd = vpet.hw.output.defaultlcd
 	end
+	if not lcd then error('No such LCD '..tostring(lcd_raw), 2) end
+	if not lcd.vram then error('LCD '..tostring(lcd)..' has no vram', 2) end
+	if type(page) == 'number' then
+		page = lcd.vram[page]
+	elseif type(page) ~= 'userdata' then -- check for passing an actual page
+		page = lcd.vram[0]
+	end
+	if not page then error('LCD has no vram page '..tostring(page), 2) end
+	return page, lcd
+end
+
+-- Following are the functions which can be called from within the script
+
+function api.blit(srcx, srcy, w, h, destx, desty, src, dest, lcd)
 	src = src or 2
-	dest = dest or 0
+	src, lcd = select_vram_page(src, lcd)
+	dest = select_vram_page(dest, lcd)
 	srcx = srcx or 0
 	srcy = srcy or 0
 	w = w or lcd.vram.w
@@ -710,22 +785,17 @@ function api.blit(srcx, srcy, w, h, destx, desty, src, dest, lcd)
 	destx = destx or 0
 	desty = desty or 0
 	lcd.vram.quad:setViewport(srcx, srcy, w, h)
-	lcd.vram[dest]:renderTo(function()
-		love.graphics.draw(lcd.vram[src], lcd.vram.quad, destx, desty)
+	dest:renderTo(function()
+		love.graphics.draw(src, lcd.vram.quad, destx, desty)
 	end)
 end
 
 function api.pix(x, y, color, dest, lcd)
 	color = color or 1
-	dest = dest or 0
-	if type(lcd) == 'number' then
-		lcd = vpet.hw.output[lcd]
-	elseif type(lcd) ~= 'table' then
-		lcd = vpet.hw.output.defaultlcd
-	end
+	dest, lcd = select_vram_page(dest, lcd)
 	local oldc = {love.graphics.getColor()}
 	love.graphics.setColor(lcd.colors[color])
-	lcd.vram[dest]:renderTo(function()
+	dest:renderTo(function()
 		love.graphics.points(x, y + 1) -- LOVE2D has an off-by-one error to account for here
 	end)
 	love.graphics.setColor(oldc)
@@ -735,25 +805,19 @@ function api.rect(x, y, w, h, color, dest, lcd)
 	x = x or 0
 	y = y or 0
 	color = color or 0
-	dest = dest or 0
-	if type(lcd) == 'number' then
-		lcd = vpet.hw.output[lcd]
-	elseif type(lcd) ~= 'table' then
-		lcd = vpet.hw.output.defaultlcd
-	end
+	dest, lcd = select_vram_page(dest, lcd)
 	w = w or lcd.vram.w
 	h = h or w or lcd.vram.h
 	local oldc = {love.graphics.getColor()}
 	love.graphics.setColor(lcd.colors[color])
-	lcd.vram[dest]:renderTo(function()
-		--love.graphics.points(x, y + 1) -- LOVE2D has an off-by-one error to account for here
+	dest:renderTo(function()
 		love.graphics.rectangle('fill', x, y, w, h)
 	end)
 	love.graphics.setColor(oldc)
 end
 
-function api.led(value)
-	local led = vpet.hw.output.defaultled
+function api.led(value, led)
+	led = led or vpet.hw.output.defaultled
 	if value ~= nil then
 		led.on = value and true or false
 	end
@@ -761,8 +825,8 @@ function api.led(value)
 end
 
 -- deprecated
-function api.cls(color, dest, lcd)
-	api.rect(0, 0, false, false, color, dest, lcd)
+function api.cls(color)
+	api.rect(nil, nil, nil, nil, color)
 end
 
 function api.drawsprite(sx,sy,x,y)

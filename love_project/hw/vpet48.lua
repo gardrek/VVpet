@@ -10,6 +10,11 @@
 
 hw = dofile(hwdir..'vpet_base.lua')
 
+hw.info = {
+	name = 'vPET48',
+	version = {0, 0, 1},
+}
+
 local vpet48dir = 'test/'
 
 local lcd = {
@@ -35,6 +40,9 @@ local lcd = {
 		h = 64,
 		'vpet64/vram.png',
 	},
+	backlight = {
+		color = {0x55, 0xaa, 0xff, 0x55},
+	},
 	-- Sub-units
 	{
 		-- the dotmatrix unit is a rectangular array of pixels on an lcd.
@@ -47,10 +55,6 @@ local lcd = {
 		page = 0,
 		pagex = 0,
 		pagey = 16,
-	},
-	{
-		type = 'backlight',
-		color = {0x55, 0xaa, 0xff, 0x55},
 	},
 }
 

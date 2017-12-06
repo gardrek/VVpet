@@ -8,10 +8,6 @@ local basedir = 'vpet64/'
 
 local hw = {
 	-- available categories include: info, base, output, input
-	info = {
-		name = 'vPET64 test',
-		version = {0, 0, 1}, -- version number, analogous to 0.0.1
-	},
 	base = {
 		-- base specifies the background image of the device, and the default dimensions of the device
 		-- minw and minh are the minimum height and width around the origin that must be shown
@@ -37,6 +33,36 @@ local hw = {
 			image_on = basedir..'led_on.png',
 			image_off = basedir..'led_off.png',
 		},
+		--[[
+		{
+			-- the lcd unit contains other units specific to it. these units should not appear outside an lcd unit
+			-- the lcd subunits are: dotmatrix, pixelimage
+			-- dotmatrix is a rectangular array of pixels which are all the same shape
+			-- pixelimage is for non-square pixels like on seven-segment displays Game and Watch
+			-- TODO: backlight lights up the display
+			type = 'lcd',
+			x = 0,
+			y = -16,
+			w = 68,
+			h = 68,
+			bgcolor = {0xee, 0xff, 0xee},
+			colors = {
+				[0] = {0xdd, 0xee, 0xcc}, -- white (paper)
+				[1] = {0x11, 0x11, 0x22}, -- black (ink)
+			},
+			vram = {
+			-- vram is basically a set of spritesheets called pages
+			-- page 0 is always initialized to a blank canvas, and is writable. other pages are read-only (for now)
+				w = 64,
+				h = 64,
+				'vpet64/vram.png',
+			},
+			backlight = {
+				color = {0x55, 0xaa, 0xff, 0x55},
+			},
+			-- Sub-units are in the positive integer portion
+		}
+		--]]
 	},
 	-- input is a table optionally containing: buttons, pedometer?, gyro?, touchscreen?, something else?
 	input = {
