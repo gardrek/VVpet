@@ -16,7 +16,7 @@ The main vPET has the following buttons, which are mapped to keys on the keyboar
 ## Files
 Currently, the files read for loading an application are:
 
-`cart.lua`
+`cart.lua` — NOTE: this has been renamed to `app.lua` for the post-jam version
 
 `sprites.png`
 

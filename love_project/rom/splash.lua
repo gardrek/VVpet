@@ -16,7 +16,9 @@ function game:draw()
 			blit(xi * 4, yi * 4, 4, 4, xi * 4 + offset, yi * 4)
 		end
 	end
-	blit(32, 0, 8, 8, 0, 0, 1)
+	vpet.draw.src = 1
+	blit(32, 0, 8, 8, 0, 0)
+	vpet.draw.src = 2
 end
 
 function game:event(type, data)

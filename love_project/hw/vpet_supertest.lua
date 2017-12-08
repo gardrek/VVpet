@@ -56,8 +56,10 @@ local lcd = {
 	-- page 0 is always initialized to a blank canvas, and is writable. other pages are read-only (for now)
 		w = 64,
 		h = 64,
+		font = basedir..'font.png',
+		basedir..'vram.png',
+		false,
 		'pika/pika.png',
-		false, false, false, false,
 	},
 	backlight = {
 		color = {0x55, 0xaa, 0xff, 0x55},
@@ -72,7 +74,7 @@ lcd.colors = {}
 for r = 0, 1 do
 	for g = 0, 1 do
 		for b = 0, 1 do
-			lcd.colors[7 - (r + g * 2 + b * 4)] = {
+			lcd.colors[7 - (r * 4 + g * 2 + b)] = {
 				0x11 + r * 0x77 + g * 0x66 + b * 0x44,
 				0x11 + r * 0x33 + g * 0x77 + b * 0x33,
 				0x11 + r * 0x22 + g * 0x33 + b * 0x77,

@@ -36,6 +36,7 @@ local lcd = {
 	-- page 0 is always initialized to a blank canvas, and is writable. other pages are read-only (for now)
 		w = 64,
 		h = 64,
+		font = 'vpet64/font.png',
 		'vpet64/vram.png',
 	},
 	backlight = {

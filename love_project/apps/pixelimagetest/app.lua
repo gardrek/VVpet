@@ -1,5 +1,7 @@
 local game = {}
 
+vpet.loadpage('sprites.png')
+
 local n = 0
 local bgcolor = 0
 local h = 64
@@ -21,7 +23,9 @@ function game:draw()
 		if vpet.btn[vvv] then
 			vpet.pix(iii, 0)
 		else
-			vpet.pix(iii, 0, 0)
+			vpet.draw.color = 0
+			vpet.pix(iii, 0)
+			vpet.draw.color = 1
 		end
 	end
 	--]]

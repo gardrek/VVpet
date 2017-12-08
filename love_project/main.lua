@@ -7,6 +7,7 @@ function love.load()
 	-- Love set-up stuff
 	io.stdout:setvbuf('no') -- enable normal use of the print() command
 	love.graphics.setDefaultFilter('nearest', 'nearest', 0) -- Pixel scaling
+	vpet.IMAGECOLOR = {0xff, 0xff, 0xff, 0xff}
 
 	mouse.last_x, mouse.last_y = love.mouse.getPosition()
 	mouse.x, mouse.y = love.mouse.getPosition()
@@ -22,17 +23,14 @@ function love.load()
 
 	vpet.inputmap = {
 		-- system buttons - these buttons are handled differently when an app is run from inside another app
-		back = {'backspace', 'tab'}, -- use to return to a previous screen or cancel something. TODO: hold for x seconds to send home key press, hold for y more seconds to force-close app
-		home = {'r'}, -- TODO: pressing home pauses/exits the app, returning to the calling app. long press force-quits the app. If the app is the top-level app, a force quit will restart the app
+		-- TODO: implement apps calling other apps
+		back = {'backspace'}, -- use to return to a previous screen or cancel something.
+		home = {'escape'}, -- TODO: Use to return to the app which started the app you'e in
 		reset = {'f10'}, -- TODO: reset pinhole, clears all user data
 		-- screen buttons - numbered left to right
 		['1'] = {'1', 'z'},
-		['2'] = {'2', 'x', 'return', 'kpenter'},
+		['2'] = {'2', 'x'},
 		['3'] = {'3', 'c'},
-		-- action buttons are assigned a letter, starting with 'a' for the most-used button
-		-- NOTE: The standard vPET does not have action buttons
-		a = {'n'},
-		b = {'b'},
 		-- direction buttons:
 		left = {'a', 'left'},
 		right = {'d', 'right'},
@@ -54,6 +52,15 @@ function love.load()
 		vpet.input[button] = false
 	end
 
+	api.draw = {
+		color = 1,
+		bgcolor = 0,
+		dest = 0, -- page 0 is typically the screen
+		font = 1, -- page 1 is typically the default font
+		src = 2, -- page 2 is typically the app's first page
+		lcd = false,
+	}
+
 	-- set up sandbox environments
 	--vpet.osenv = {} -- The OS would conceivably need access to a different environment
 	vpet.env = {} -- this is used when loading apps
@@ -67,7 +74,7 @@ function love.load()
 		'select', 'tonumber', 'tostring', 'type',
 		'unpack', '_VERSION', 'xpcall',
 		-- Libraries
-		'math', 'table'
+		'math', 'table', 'string'
 	}
 	for i,v in ipairs(env_globals) do
 		vpet.env[v]=_G[v]
@@ -90,59 +97,49 @@ function love.load()
 
 	-- load hardware --------
 
-	--vpet.hw = vpet:loadhardware('vpet64.lua', vpet.hwdir)
+	vpet.hw = vpet:loadhardware('vpet64.lua', vpet.hwdir)
 	--vpet.hw = vpet:loadhardware('vpet48.lua', vpet.hwdir)
-	vpet.hw = vpet:loadhardware('vpet_supertest.lua', vpet.hwdir)
+	--vpet.hw = vpet:loadhardware('vpet_supertest.lua', vpet.hwdir)
 
 	if not vpet.hw then
 		error('Base hardware failed to load!')
 	end
 
+	api.draw.lcd = vpet.hw.output and vpet.hw.output.defaultlcd
+
 	love.resize()
 
 	-- load the software --------
 
-	local cartfolder
-	cartfolder = 'carts/'
-	--cartfolder = cartfolder..'tictactoe/'
-	cartfolder = cartfolder..'pixelimagetest/'
+	-- app stack --------
+	vpet.appstack = {}
 
-	--cartfolder = 'rom/'
-
-	local spritefile = cartfolder .. '/sprites.png'
-	if not love.filesystem.exists(spritefile) then
-		spritefile = 'rom/nocart.png'
-	end
-	if not love.filesystem.exists(spritefile) then
-		spritefile = love.graphics.newImage(love.image.newImageData(64, 64))
+	function vpet.appstack:push(a)
+		table.insert(self, a)
 	end
 
-	if vpet.hw.output.defaultlcd then
-		vpet:initvram(vpet.hw.output.defaultlcd, 2, spritefile)
+	function vpet.appstack:pop()
+		return table.remove(self)
 	end
 
-	local success
-	success, cart = vpet:loadscript(cartfolder..'cart.lua')
-	if success then
-		print('Cart loaded')
-	else
-		cart = {}
-		success, cart = vpet:loadscript('rom/splash.lua')
-		if success then
-			print('Using default cart...')
-		else
-			error('Could not load default cart!')
-		end
+	function vpet.appstack:peek(i)
+		i = i or 0
+		return self[#self - i]
 	end
 
-	--success, cart = vpet:loadscript('rom/showvram.lua')
-	vpet:initvram(vpet.hw.output.defaultlcd, 2, 'hw/pika/pika.png')
+	local appname
+	--appname = 'fonttest'
+	--appname = 'tictactoe'
+	appname = 'applist'
+
+	vpet.cansub = true
+	api.subapp(appname, true)
 end
 
 function love.update(dt)
 	vpet:updatemousecheap()
-	if cart.update and type(cart.update) == 'function' then
-		cart:update(dt)
+	if vpet.app.update and type(vpet.app.update) == 'function' then
+		vpet.app:update(dt)
 	end
 end
 
@@ -167,11 +164,9 @@ function vpet:updatemousecheap()
 	end
 	if mouse.pressed then
 		vpet:setInput(mouse.pressed_key, true)
-		-- TODO: refactor this to be a check into a table of declared functions
 		mouse.pressed = false
 	elseif was_pressed and not mouse.down and mouse.pressed_key then
 		vpet:setInput(mouse.pressed_key, false)
-		-- TODO: refactor this to be a check into a table of declared functions
 	end
 end
 
@@ -219,7 +214,7 @@ function vpet:updatemouse()
 end
 
 function love.draw()
-	love.graphics.setColor(0xff, 0xff, 0xff, 0xff)
+	love.graphics.setColor(vpet.IMAGECOLOR)
 
 	-- scenery background image
 	love.graphics.draw(
@@ -260,7 +255,7 @@ function love.draw()
 			if unit.type == 'led' then
 				image = unit.on and unit.image_on or unit.image_off
 				if image then
-					love.graphics.setColor(0xff, 0xff, 0xff, 0xff)
+					love.graphics.setColor(vpet.IMAGECOLOR)
 					love.graphics.draw(
 						image,
 						emu.center.x + (unit.x - unit.w / 2) * emu.scale,
@@ -269,18 +264,18 @@ function love.draw()
 					)
 				end
 			elseif unit.type == 'lcd' then
-				love.graphics.setColor(unit.bgcolor or {0xff, 0xff, 0xff, 0xff})
+				love.graphics.setColor(unit.bgcolor or vpet.IMAGECOLOR)
 				love.graphics.rectangle(
 					'fill',
 					emu.center.x + (unit.x - unit.w / 2) * emu.scale,
 					emu.center.y + (unit.y - unit.h / 2) * emu.scale,
 					unit.w * emu.scale, unit.h * emu.scale
 				)
-				love.graphics.setColor(0xff, 0xff, 0xff, 0xff)
+				love.graphics.setColor(vpet.IMAGECOLOR)
 				for subindex, subunit in ipairs(unit) do
 					if subunit.type == 'dotmatrix' then
-						if cart.draw and type(cart.draw) == 'function' then
-							cart:draw()
+						if vpet.app.draw and type(vpet.app.draw) == 'function' then
+							vpet.app:draw()
 						end
 						love.graphics.draw(
 							unit.vram[subunit.page],
@@ -343,11 +338,9 @@ function love.keypressed(key, scancode, isrepeat)
 	end
 end
 
-function love.keyreleased(key, scancode, isrepeat)
-	if not isrepeat then
-		if vpet.inputreversemap[key] then
-			vpet:setInput(vpet.inputreversemap[key], false)
-		end
+function love.keyreleased(key, scancode)
+	if vpet.inputreversemap[key] then
+		vpet:setInput(vpet.inputreversemap[key], false)
 	end
 end
 
@@ -366,11 +359,16 @@ end
 
 function vpet:setInput(button, pressed)
 	if self.input[button] ~= pressed then
-		-- TODO: refactor this to be a check into a table of declared functions
-		if cart.event and type(cart.event)=='function' then
-			cart:event('button', {button = button, up = not pressed, down = pressed})
-		end
 		self.input[button] = pressed
+		-- TODO: refactor this to be a check into a table of declared functions, maybe?
+		if vpet.app.event and type(vpet.app.event)=='function' then
+			vpet.app:event('button', {button = button, up = not pressed, down = pressed})
+		end
+		if button == 'home' then
+			if #vpet.appstack > 0 then
+				api.quit()
+			end
+		end
 	end
 end
 
@@ -405,10 +403,28 @@ function vpet:readonlytable(table)
 	});
 end
 
+function vpet:newpage(image, lcd)
+	lcd = lcd or self.output.defaultlcd
+	local page = love.graphics.newCanvas(lcd.vram.w, lcd.vram.h)
+	if image then
+		image = self:loadforvram(image, lcd)
+	end
+	page:renderTo(function()
+		if image then
+			love.graphics.setColor(vpet.IMAGECOLOR)
+			love.graphics.draw(image)
+		else
+			love.graphics.setColor(lcd.colors[0])
+			love.graphics.rectangle('fill', 0, 0, lcd.vram.w, lcd.vram.h)
+		end
+	end)
+	return page
+end
+
 function vpet:initvram(lcd, page, image)
 	lcd.vram[page] = love.graphics.newCanvas(lcd.vram.w, lcd.vram.h)
 	if image then
-		image = self:loadforvram(lcd, page, image)
+		image = self:loadforvram(image, lcd)
 	end
 	lcd.vram[page]:renderTo(function()
 		if image then
@@ -422,7 +438,7 @@ function vpet:initvram(lcd, page, image)
 	end)
 end
 
-function vpet:loadforvram(lcd, page, image)
+function vpet:loadforvram(image, lcd)
 	local raw
 	if type(image) == 'string' then
 		image = love.graphics.newImage(image)
@@ -432,6 +448,7 @@ function vpet:loadforvram(lcd, page, image)
 	end
 	raw:mapPixel(
 		function(x, y, r, g, b, a)
+			---[[
 			a = a < 128 and 0 or 255
 			local distance
 			local closest = 16777216
@@ -444,6 +461,7 @@ function vpet:loadforvram(lcd, page, image)
 				end
 			end
 			return color[1], color[2], color[3], a
+			--]]return unpack(vpet:closest_color_index(lcd.colors, r, g, b, a))
 		end
 	)
 	return love.graphics.newImage(raw)
@@ -464,14 +482,96 @@ function vpet:loadscript(script, env)
 	local ok, f = pcall(love.filesystem.load, script)
 	if not ok then print('script '..script..' failed to load: script error') return false, f end
 	setfenv(f, env or self.env)
-	print('script '..script..' loaded')
-	return pcall(f)
+	--print('script '..script..' loaded')
+	return f
+end
+
+function vpet:loadapp(appname, dir)
+	if type(appname) ~= 'string' then
+		print(appname, ' (name) not a string')
+	end
+	dir = dir or 'apps/'
+	if type(dir) ~= 'string' then
+		print(dir, ' (dir) not a string')
+	end
+	local list = self:listapps(dir)
+	local appinfo
+	for index, info in ipairs(list) do
+		if info.name == appname then
+			appinfo = info
+			break
+		end
+	end
+	if appinfo then
+		local app = self:loadscript(appinfo.file)
+		return app, appinfo.dir
+	else
+		print('App '..appname..' not found in '..dir)
+	end
+end
+
+function vpet:appinfo(file)
+	if not love.filesystem.exists(file) then return false end
+	-- this match gives the directory, the filename, and the ext if it exists, or the filename again if not
+	local dir, filename, ext = file:match("(.-)([^\\/]-%.?([^%.\\/]*))$")
+	local appname
+	if filename == ext then
+		ext = ''
+		appname = filename
+	else
+		appname = filename:sub(1, -#ext - 2)
+	end
+	-- now, appname is the name, without any extension, ext is empty if there is no extension
+	local isapp
+	local appfile, datadir
+	if love.filesystem.exists(file) then
+		if ext == '' then
+			if love.filesystem.isDirectory(file) then
+				datadir = dir..filename..'/'
+				appfile = datadir..filename..'.lua'
+				if not love.filesystem.isFile(appfile) then
+					appfile = datadir..'app.lua'
+					if not love.filesystem.isFile(appfile) then
+						appfile = nil
+					end
+				end
+				if appfile then
+					isapp = true
+				end
+			end
+		elseif ext:lower() == 'lua' then
+			if love.filesystem.isFile(file) then
+				datadir = dir
+				appfile = file
+				isapp = true
+			end
+		end
+	end
+	--print(isapp, dir, appname, ext, appfile, datadir)
+	if isapp then
+		return {file = appfile, dir = datadir, name = appname}
+	else
+		return false
+	end
+end
+
+function vpet:listapps(dir)
+	local files = love.filesystem.getDirectoryItems(dir)
+	local list = {}
+	local info
+	for fileindex, file in ipairs(files) do
+		info = vpet:appinfo(dir..file)
+		if info then
+			table.insert(list, info)
+		end
+	end
+	return list
 end
 
 function vpet:loadhardware(file, dir)
 	dir = dir or self.hwenv.hwdir
 
-	local success, hw, error = vpet:loadscript(dir..file, self.hwenv)
+	local success, hw, error = pcall(vpet:loadscript(dir..file, self.hwenv))
 	local loaded = {}
 	--loaded.dir = dir
 	local hw_errors = 0
@@ -612,6 +712,7 @@ function vpet:loadhardware(file, dir)
 
 	if hw.base then
 		loaded.base = {}
+		loaded.base.scale = hw.base.scale or 1
 		local malformed = false
 		for i, v in ipairs{'x', 'y', 'w', 'h', 'minw', 'minh'} do
 			if hw.base[v] then
@@ -673,11 +774,27 @@ function vpet:loadhardware(file, dir)
 						unit.vram.w = o.vram.w
 						unit.vram.h = o.vram.h
 						unit.vram.quad = love.graphics.newQuad(0, 0, unit.vram.w, unit.vram.h, unit.vram.w, unit.vram.h)
-						vpet:initvram(unit, 0)
+						--vpet:initvram(unit, 0)
+						unit.vram[0] = vpet:newpage(nil, unit)
 						load_images(unit.vram, o.vram, nil, 'vram')
 						for pagenum, image in ipairs(unit.vram) do
-							vpet:initvram(unit, pagenum, image)
+							--vpet:initvram(unit, pagenum, image)
+							unit.vram[pagenum] = vpet:newpage(image, unit)
 						end
+						unit.vram.defaultpage = unit.vram[#unit.vram]
+					end
+					unit.vram.font = love.graphics.newCanvas(unit.vram.w, unit.vram.h)
+					if type(o.vram.font) == 'string' and love.filesystem.exists(dir..o.vram.font) then
+						local image = love.graphics.newImage(dir..o.vram.font)
+						local oldc = {love.graphics.getColor()}
+						love.graphics.setColor(vpet.IMAGECOLOR)
+						unit.vram.font:renderTo(function()
+							love.graphics.draw(image)
+						end)
+						love.graphics.setColor(oldc)
+					else
+						print(id..' font was not loaded')
+						hw_warnings = hw_warnings + 1
 					end
 					-- TODO: Handle backlight here
 					local subunit
@@ -768,16 +885,36 @@ function select_vram_page(page, lcd)
 	elseif type(page) ~= 'userdata' then -- check for passing an actual page
 		page = lcd.vram[0]
 	end
-	if not page then error('LCD has no vram page '..tostring(page), 2) end
+	if not page then
+		page = lcd.vram.defaultpage
+		--error('LCD has no vram page '..tostring(page), 2)
+	end
 	return page, lcd
 end
 
--- Following are the functions which can be called from within the script
+function vpet:initapp(i)
+	i = i or 0
+	local lcd = vpet.hw.output.defaultlcd
+	local start = #lcd.vram
+	for index, filename in ipairs(self.appstack.peek(i).app.pages) do
+		self:initvram(lcd, start + index, self.appstack.peek(i).dir .. filename)
+	end
+end
 
-function api.blit(srcx, srcy, w, h, destx, desty, src, dest, lcd)
-	src = src or 2
-	src, lcd = select_vram_page(src, lcd)
-	dest = select_vram_page(dest, lcd)
+-- Following are the functions and variables which can be accessed from within the script
+
+-- Drawing commands
+
+function api.cls(color)
+	local oldc = api.draw.color
+	api.draw.color = color or api.draw.bgcolor
+	api.rect()
+	api.draw.color = oldc
+end
+
+function api.blit(srcx, srcy, w, h, destx, desty)
+	local src, lcd = select_vram_page(api.draw.src, api.draw.lcd)
+	dest = select_vram_page(api.draw.dest, api.draw.lcd)
 	srcx = srcx or 0
 	srcy = srcy or 0
 	w = w or lcd.vram.w
@@ -785,36 +922,66 @@ function api.blit(srcx, srcy, w, h, destx, desty, src, dest, lcd)
 	destx = destx or 0
 	desty = desty or 0
 	lcd.vram.quad:setViewport(srcx, srcy, w, h)
+	local oldc = {love.graphics.getColor()}
+	love.graphics.setColor(api.draw._drawcolor or vpet.IMAGECOLOR)
 	dest:renderTo(function()
 		love.graphics.draw(src, lcd.vram.quad, destx, desty)
-	end)
-end
-
-function api.pix(x, y, color, dest, lcd)
-	color = color or 1
-	dest, lcd = select_vram_page(dest, lcd)
-	local oldc = {love.graphics.getColor()}
-	love.graphics.setColor(lcd.colors[color])
-	dest:renderTo(function()
-		love.graphics.points(x, y + 1) -- LOVE2D has an off-by-one error to account for here
 	end)
 	love.graphics.setColor(oldc)
 end
 
-function api.rect(x, y, w, h, color, dest, lcd)
+function api.text(str, x, y, align, rect)
 	x = x or 0
 	y = y or 0
-	color = color or 0
-	dest, lcd = select_vram_page(dest, lcd)
+	align = align or 1
+	local dest, lcd = select_vram_page(api.draw.dest, api.draw.lcd)
+	local oldc, oldsrc = {love.graphics.getColor()}, api.draw.src
+	api.draw.src = lcd.vram.font
+	local ch, srcx, srcy, xi, yi, width
+	width = #str * 4
+	xi = ((align - 1) * width) / 2
+	yi = 0
+	if rect then
+		local color = type(rect) == 'number' and rect or api.draw.bgcolor
+		api.draw._drawcolor = lcd.colors[color % (#lcd.colors + 1)]
+		api.rect(x + xi - 1, y + yi, width + 1, 8)
+	end
+	for i = 1, #str do
+		ch = str:byte(i)
+		srcx = (ch % 16) * 4
+		srcy = math.floor(ch / 16) * 8
+		api.draw._drawcolor = lcd.colors[api.draw.color % (#lcd.colors + 1)]
+		api.blit(srcx, srcy, 4, 8, x + (i - 1) * 4 + xi, y + yi)
+	end
+	api.draw._drawcolor = nil
+	api.draw.src = oldsrc
+end
+
+function api.pix(x, y)
+	local dest, lcd = select_vram_page(api.draw.dest, api.draw.lcd)
+	local oldc = {love.graphics.getColor()}
+	love.graphics.setColor(lcd.colors[api.draw.color % (#lcd.colors + 1)])
+	dest:renderTo(function()
+		love.graphics.points(x, y + 1) -- UPSTREAM: LOVE2D has an off-by-one error to account for here
+	end)
+	love.graphics.setColor(oldc)
+end
+
+function api.rect(x, y, w, h)
+	x = x or 0
+	y = y or 0
+	local dest, lcd = select_vram_page(api.draw.dest, api.draw.lcd)
 	w = w or lcd.vram.w
 	h = h or w or lcd.vram.h
 	local oldc = {love.graphics.getColor()}
-	love.graphics.setColor(lcd.colors[color])
+	love.graphics.setColor(api.draw._drawcolor or lcd.colors[api.draw.color % (#lcd.colors + 1)])
 	dest:renderTo(function()
 		love.graphics.rectangle('fill', x, y, w, h)
 	end)
 	love.graphics.setColor(oldc)
 end
+
+-- Other hardware commands
 
 function api.led(value, led)
 	led = led or vpet.hw.output.defaultled
@@ -824,11 +991,49 @@ function api.led(value, led)
 	return led.on
 end
 
--- deprecated
-function api.cls(color)
-	api.rect(nil, nil, nil, nil, color)
+function api.loadpage(file, page, lcd)
+	lcd = lcd or vpet.hw.output.defaultlcd
+	page = page or #lcd.vram + 1
+	local appstate = vpet.appstack:peek()
+	if file then
+		appstate.vram[page] = vpet:newpage(appstate.dir..file, lcd)
+	else
+		appstate.vram[page] = vpet:newpage(nil, lcd)
+	end
+	print(unpack(lcd.vram))
 end
 
-function api.drawsprite(sx,sy,x,y)
-	api.blit(sx*4, sy*4, 4, 4, x, y)
+-- App control commands
+
+function api.subapp(appname, cansub)
+	if not vpet.cansub then
+		return false, 'App does not have permission to call other apps.'
+	end
+	local app, appdir = vpet:loadapp(appname) -- FIXME: this is looking in 'apps/', but probably should not be? not sure
+	if app then
+		local appstate ={
+			name = appname,
+			dir = appdir,
+			vram = {},
+		}
+		vpet.appstack:push(appstate)
+		local ok
+		ok, appstate.app = pcall(app)
+		if not ok then print(appstate.app) error'app failed to load' end
+		vpet.app = vpet.appstack:peek().app -- FIXME: remove vpet.app or replace with metatable
+		vpet.appstack:peek().app.applist = vpet:listapps('apps/')
+		vpet.cansub = cansub
+	else
+		return false, appdir
+	end
+end
+
+function api.quit()
+	if #vpet.appstack > 1 then
+		print(unpack(vpet.appstack))
+		vpet.appstack:pop()
+		print(unpack(vpet.appstack))
+		vpet.app = vpet.appstack:peek().app -- FIXME: remove vpet.app or replace with metatable
+		vpet.cansub = true
+	end
 end
