@@ -57,7 +57,7 @@ local lcd = {
 		w = 64,
 		h = 64,
 		font = basedir..'font.png',
-		basedir..'vram.png',
+		false,
 		false,
 		'pika/pika.png',
 	},

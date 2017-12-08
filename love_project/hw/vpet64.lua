@@ -15,6 +15,8 @@ hw.info = {
 	version = {0, 0, 1}, -- version number, analogous to 0.0.1
 }
 
+local basedir = 'vpet64/'
+
 local lcd = {
 	-- the lcd unit contains other units specific to it. these units should not appear outside an lcd unit
 	-- the lcd subunits are: dotmatrix, backlight, pixelimage
@@ -37,7 +39,6 @@ local lcd = {
 		w = 64,
 		h = 64,
 		font = 'vpet64/font.png',
-		'vpet64/vram.png',
 	},
 	backlight = {
 		color = {0x55, 0xaa, 0xff, 0x55},

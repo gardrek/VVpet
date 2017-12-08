@@ -2,6 +2,7 @@ local emu = {}
 local vpet = {}
 local api = {}
 local mouse = {}
+local draw = {}
 
 function love.load()
 	-- Love set-up stuff
@@ -52,15 +53,6 @@ function love.load()
 		vpet.input[button] = false
 	end
 
-	api.draw = {
-		color = 1,
-		bgcolor = 0,
-		dest = 0, -- page 0 is typically the screen
-		font = 1, -- page 1 is typically the default font
-		src = 2, -- page 2 is typically the app's first page
-		lcd = false,
-	}
-
 	-- set up sandbox environments
 	--vpet.osenv = {} -- The OS would conceivably need access to a different environment
 	vpet.env = {} -- this is used when loading apps
@@ -76,15 +68,17 @@ function love.load()
 		-- Libraries
 		'math', 'table', 'string'
 	}
-	for i,v in ipairs(env_globals) do
+	for i, v in ipairs(env_globals) do
 		vpet.env[v]=_G[v]
 		vpet.hwenv[v]=_G[v]
 	end
 	vpet.env.vpet = {}
-	for k,v in pairs(api) do
-		-- TODO: Deprecate and remove one of the next two lines
-		vpet.env[k] = v
+	for k, v in pairs(api) do
 		vpet.env.vpet[k] = v
+	end
+	vpet.env.draw = {}
+	for k, v in pairs(draw) do
+		vpet.env.draw[k] = v
 	end
 	vpet.env._G = vpet.env
 	vpet.hwenv._G = vpet.hwenv
@@ -104,8 +98,6 @@ function love.load()
 	if not vpet.hw then
 		error('Base hardware failed to load!')
 	end
-
-	api.draw.lcd = vpet.hw.output and vpet.hw.output.defaultlcd
 
 	love.resize()
 
@@ -132,8 +124,10 @@ function love.load()
 	--appname = 'tictactoe'
 	appname = 'applist'
 
+	vpet.appdir = 'rom/' -- FIXME:HAXXXX
 	vpet.cansub = true
 	api.subapp(appname, true)
+	vpet.appdir = nil -- FIXME:HAXXXX
 end
 
 function love.update(dt)
@@ -214,6 +208,10 @@ function vpet:updatemouse()
 end
 
 function love.draw()
+	if vpet.app.draw and type(vpet.app.draw) == 'function' then
+		vpet.app:draw()
+	end
+
 	love.graphics.setColor(vpet.IMAGECOLOR)
 
 	-- scenery background image
@@ -264,19 +262,18 @@ function love.draw()
 					)
 				end
 			elseif unit.type == 'lcd' then
-				love.graphics.setColor(unit.bgcolor or vpet.IMAGECOLOR)
-				love.graphics.rectangle(
-					'fill',
-					emu.center.x + (unit.x - unit.w / 2) * emu.scale,
-					emu.center.y + (unit.y - unit.h / 2) * emu.scale,
-					unit.w * emu.scale, unit.h * emu.scale
-				)
+				if unit.bgcolor then
+					love.graphics.setColor(unit.bgcolor)
+					love.graphics.rectangle(
+						'fill',
+						emu.center.x + (unit.x - unit.w / 2) * emu.scale,
+						emu.center.y + (unit.y - unit.h / 2) * emu.scale,
+						unit.w * emu.scale, unit.h * emu.scale
+					)
+				end
 				love.graphics.setColor(vpet.IMAGECOLOR)
 				for subindex, subunit in ipairs(unit) do
 					if subunit.type == 'dotmatrix' then
-						if vpet.app.draw and type(vpet.app.draw) == 'function' then
-							vpet.app:draw()
-						end
 						love.graphics.draw(
 							unit.vram[subunit.page],
 							subunit.quad,
@@ -399,12 +396,12 @@ function vpet:readonlytable(table)
 			function(table, key, value)
 				error('Attempt to modify read-only table')
 			end,
-		__metatable = false
-	});
+		__metatable = false,
+	})
 end
 
 function vpet:newpage(image, lcd)
-	lcd = lcd or self.output.defaultlcd
+	lcd = lcd or self.hw.output.defaultlcd
 	local page = love.graphics.newCanvas(lcd.vram.w, lcd.vram.h)
 	if image then
 		image = self:loadforvram(image, lcd)
@@ -414,38 +411,19 @@ function vpet:newpage(image, lcd)
 			love.graphics.setColor(vpet.IMAGECOLOR)
 			love.graphics.draw(image)
 		else
-			love.graphics.setColor(lcd.colors[0])
+			love.graphics.setColor(lcd:getColorRGB(0))
 			love.graphics.rectangle('fill', 0, 0, lcd.vram.w, lcd.vram.h)
 		end
 	end)
 	return page
 end
 
-function vpet:initvram(lcd, page, image)
-	lcd.vram[page] = love.graphics.newCanvas(lcd.vram.w, lcd.vram.h)
-	if image then
-		image = self:loadforvram(image, lcd)
-	end
-	lcd.vram[page]:renderTo(function()
-		if image then
-			love.graphics.draw(image)
-		else
-			local oldc = {love.graphics.getColor()}
-			love.graphics.setColor(lcd.colors[0])
-			love.graphics.rectangle('fill', 0, 0, lcd.vram.w, lcd.vram.h)
-			love.graphics.setColor(oldc)
-		end
-	end)
-end
-
 function vpet:loadforvram(image, lcd)
 	local raw
 	if type(image) == 'string' then
 		image = love.graphics.newImage(image)
-		raw = image:getData()
-	else
-		raw = image:getData()
 	end
+	raw = image:getData()
 	raw:mapPixel(
 		function(x, y, r, g, b, a)
 			---[[
@@ -503,7 +481,8 @@ function vpet:loadapp(appname, dir)
 		end
 	end
 	if appinfo then
-		local app = self:loadscript(appinfo.file)
+		local app, err = self:loadscript(appinfo.file)
+		if not app then return false, err end
 		return app, appinfo.dir
 	else
 		print('App '..appname..' not found in '..dir)
@@ -769,16 +748,19 @@ function vpet:loadhardware(file, dir)
 					unit.defaultdotmatrix = false
 					unit.bgcolor = o.bgcolor
 					unit.colors = o.colors
+					if unit.colors then
+						function unit:getColorRGB(index)
+							return self.colors[index] or self.colors[1]
+						end
+					end
 					if o.vram then
 						unit.vram = {}
 						unit.vram.w = o.vram.w
 						unit.vram.h = o.vram.h
 						unit.vram.quad = love.graphics.newQuad(0, 0, unit.vram.w, unit.vram.h, unit.vram.w, unit.vram.h)
-						--vpet:initvram(unit, 0)
 						unit.vram[0] = vpet:newpage(nil, unit)
 						load_images(unit.vram, o.vram, nil, 'vram')
 						for pagenum, image in ipairs(unit.vram) do
-							--vpet:initvram(unit, pagenum, image)
 							unit.vram[pagenum] = vpet:newpage(image, unit)
 						end
 						unit.vram.defaultpage = unit.vram[#unit.vram]
@@ -892,94 +874,7 @@ function select_vram_page(page, lcd)
 	return page, lcd
 end
 
-function vpet:initapp(i)
-	i = i or 0
-	local lcd = vpet.hw.output.defaultlcd
-	local start = #lcd.vram
-	for index, filename in ipairs(self.appstack.peek(i).app.pages) do
-		self:initvram(lcd, start + index, self.appstack.peek(i).dir .. filename)
-	end
-end
-
 -- Following are the functions and variables which can be accessed from within the script
-
--- Drawing commands
-
-function api.cls(color)
-	local oldc = api.draw.color
-	api.draw.color = color or api.draw.bgcolor
-	api.rect()
-	api.draw.color = oldc
-end
-
-function api.blit(srcx, srcy, w, h, destx, desty)
-	local src, lcd = select_vram_page(api.draw.src, api.draw.lcd)
-	dest = select_vram_page(api.draw.dest, api.draw.lcd)
-	srcx = srcx or 0
-	srcy = srcy or 0
-	w = w or lcd.vram.w
-	h = h or w or lcd.vram.h
-	destx = destx or 0
-	desty = desty or 0
-	lcd.vram.quad:setViewport(srcx, srcy, w, h)
-	local oldc = {love.graphics.getColor()}
-	love.graphics.setColor(api.draw._drawcolor or vpet.IMAGECOLOR)
-	dest:renderTo(function()
-		love.graphics.draw(src, lcd.vram.quad, destx, desty)
-	end)
-	love.graphics.setColor(oldc)
-end
-
-function api.text(str, x, y, align, rect)
-	x = x or 0
-	y = y or 0
-	align = align or 1
-	local dest, lcd = select_vram_page(api.draw.dest, api.draw.lcd)
-	local oldc, oldsrc = {love.graphics.getColor()}, api.draw.src
-	api.draw.src = lcd.vram.font
-	local ch, srcx, srcy, xi, yi, width
-	width = #str * 4
-	xi = ((align - 1) * width) / 2
-	yi = 0
-	if rect then
-		local color = type(rect) == 'number' and rect or api.draw.bgcolor
-		api.draw._drawcolor = lcd.colors[color % (#lcd.colors + 1)]
-		api.rect(x + xi - 1, y + yi, width + 1, 8)
-	end
-	for i = 1, #str do
-		ch = str:byte(i)
-		srcx = (ch % 16) * 4
-		srcy = math.floor(ch / 16) * 8
-		api.draw._drawcolor = lcd.colors[api.draw.color % (#lcd.colors + 1)]
-		api.blit(srcx, srcy, 4, 8, x + (i - 1) * 4 + xi, y + yi)
-	end
-	api.draw._drawcolor = nil
-	api.draw.src = oldsrc
-end
-
-function api.pix(x, y)
-	local dest, lcd = select_vram_page(api.draw.dest, api.draw.lcd)
-	local oldc = {love.graphics.getColor()}
-	love.graphics.setColor(lcd.colors[api.draw.color % (#lcd.colors + 1)])
-	dest:renderTo(function()
-		love.graphics.points(x, y + 1) -- UPSTREAM: LOVE2D has an off-by-one error to account for here
-	end)
-	love.graphics.setColor(oldc)
-end
-
-function api.rect(x, y, w, h)
-	x = x or 0
-	y = y or 0
-	local dest, lcd = select_vram_page(api.draw.dest, api.draw.lcd)
-	w = w or lcd.vram.w
-	h = h or w or lcd.vram.h
-	local oldc = {love.graphics.getColor()}
-	love.graphics.setColor(api.draw._drawcolor or lcd.colors[api.draw.color % (#lcd.colors + 1)])
-	dest:renderTo(function()
-		love.graphics.rectangle('fill', x, y, w, h)
-	end)
-	love.graphics.setColor(oldc)
-end
 
 -- Other hardware commands
 
@@ -992,15 +887,16 @@ function api.led(value, led)
 end
 
 function api.loadpage(file, page, lcd)
-	lcd = lcd or vpet.hw.output.defaultlcd
-	page = page or #lcd.vram + 1
 	local appstate = vpet.appstack:peek()
+	lcd = lcd or vpet.hw.output.defaultlcd
+	page = page or #appstate.vram + 1
 	if file then
 		appstate.vram[page] = vpet:newpage(appstate.dir..file, lcd)
 	else
 		appstate.vram[page] = vpet:newpage(nil, lcd)
 	end
 	print(unpack(lcd.vram))
+	return page
 end
 
 -- App control commands
@@ -1009,19 +905,36 @@ function api.subapp(appname, cansub)
 	if not vpet.cansub then
 		return false, 'App does not have permission to call other apps.'
 	end
-	local app, appdir = vpet:loadapp(appname) -- FIXME: this is looking in 'apps/', but probably should not be? not sure
+	local app, appdir = vpet:loadapp(appname, vpet.appdir) -- FIXME: probably not the best way to control this
 	if app then
 		local appstate ={
 			name = appname,
 			dir = appdir,
-			vram = {},
+			vram = {
+				draw = {},
+			},
 		}
+		appstate.desthw = vpet.hw.output.defaultlcd
+		appstate.srchw = appstate -- INCEPTION??
+		for i = 0, #vpet.hw.output.defaultlcd.vram do
+			appstate.vram[i] = vpet.hw.output.defaultlcd.vram[i]
+		end
+		function appstate.vram:getColorRGB(index)
+			vpet.hw.output.defaultlcd:getColorRGB(index)
+		end
 		vpet.appstack:push(appstate)
+		draw.setColor(1, 0)
+		draw.setDest(0, 'screen')
+		draw.setSrc(0, 'screen')
 		local ok
 		ok, appstate.app = pcall(app)
 		if not ok then print(appstate.app) error'app failed to load' end
+		if not appstate.vram[1] then
+			appstate.vram[1] = vpet:newpage()
+		end
+		draw.setSrc(1, 'app')
 		vpet.app = vpet.appstack:peek().app -- FIXME: remove vpet.app or replace with metatable
-		vpet.appstack:peek().app.applist = vpet:listapps('apps/')
+		if cansub then vpet.appstack:peek().app.applist = vpet:listapps('apps/') end
 		vpet.cansub = cansub
 	else
 		return false, appdir
@@ -1036,4 +949,150 @@ function api.quit()
 		vpet.app = vpet.appstack:peek().app -- FIXME: remove vpet.app or replace with metatable
 		vpet.cansub = true
 	end
+end
+
+-- These are the new draw functions --------
+
+function draw.setColor(color, bgcolor)
+	local appstate = vpet.appstack:peek()
+	local drawstate = appstate.vram.draw
+	drawstate.color = color or drawstate.color
+	drawstate.bgcolor = bgcolor or drawstate.bgcolor
+	love.graphics.setColor(appstate.desthw:getColorRGB(drawstate.color))
+end
+
+function draw.getColor()
+	local appstate = vpet.appstack:peek()
+	return appstate.vram.draw.color, appstate.vram.draw.bgcolor
+end
+
+function draw.setDest(page, hw)
+	local appstate = vpet.appstack:peek()
+	if type(hw) == 'number' then
+		if vpet.hw.output[hw] then
+			appstate.desthw = vpet.hw.output[hw]
+		else
+			error('invalid argument #2 to setDest: LCD ' .. tostring(hw) .. ' does not exist', 2)
+		end
+	elseif hw == 'app' then
+		appstate.desthw = appstate
+	elseif hw == 'screen' then
+		appstate.desthw = vpet.hw.output.defaultlcd
+	else
+		error('invalid argument #2 to setDest of type ' .. type(hw), 2)
+	end
+	if type(page) == 'number' then
+		if appstate.desthw.vram[page] then
+			appstate.destpage = page
+		else
+			error('invalid argument #1 to setDest: page ' .. type(page) .. ' does not exist', 2)
+		end
+	--elseif not page then
+		--appstate.destpage = 0
+	else
+		error('invalid argument #1 to setDest of type ' .. type(page), 2)
+	end
+	appstate.dest = appstate.desthw.vram[appstate.destpage]
+end
+
+function draw.setSrc(page, hw)
+	local appstate = vpet.appstack:peek()
+	if type(hw) == 'number' then
+		if vpet.hw.output[hw] then
+			appstate.srchw = vpet.hw.output[hw]
+		else
+			error('invalid argument #2 to setSrc: LCD ' .. tostring(hw) .. ' does not exist', 2)
+		end
+	elseif hw == 'app' then
+		appstate.srchw = appstate
+	elseif hw == 'screen' then
+		appstate.srchw = vpet.hw.output.defaultlcd
+	else
+		error('invalid argument #2 to setSrc of type ' .. type(hw), 2)
+	end
+	if type(page) == 'number' then
+		if appstate.srchw.vram[page] then
+			appstate.srcpage = page
+		else
+			error('invalid argument #1 to setSrc: page ' .. type(page) .. ' does not exist', 2)
+		end
+	--elseif not page then
+		--appstate.srcpage = 0
+	else
+		error('invalid argument #1 to setSrc of type ' .. type(page), 2)
+	end
+	appstate.src = appstate.srchw.vram[appstate.srcpage]
+end
+
+function draw.cls(color)
+	local vram = vpet.appstack:peek().vram
+	local oldc, bgc = draw.getColor()
+	draw.setColor(color or bgc)
+	draw.rect()
+	draw.setColor(oldc)
+end
+
+function draw.rect(x, y, w, h)
+	local appstate = vpet.appstack:peek()
+	x = x or 0
+	y = y or 0
+	w = w or appstate.dest:getWidth()
+	h = h or appstate.dest:getHeight()
+	appstate.dest:renderTo(function()
+		love.graphics.rectangle('fill', x, y, w, h)
+	end)
+end
+
+function draw.pix(x, y)
+	vpet.appstack:peek().dest:renderTo(function()
+		love.graphics.points(x, y + 1) -- UPSTREAM: LOVE2D has an off-by-one error to account for here
+	end)
+end
+
+function draw.blit(srcx, srcy, w, h, destx, desty)
+	local appstate = vpet.appstack:peek()
+	srcx = srcx or 0
+	srcy = srcy or 0
+	w = w or appstate.dest:getWidth()
+	h = h or appstate.dest:getHeight()
+	destx = destx or 0
+	desty = desty or 0
+	local quad = vpet.hw.output.defaultlcd.vram.quad
+	quad:setViewport(srcx, srcy, w, h)
+	love.graphics.setColor(vpet.IMAGECOLOR)
+	appstate.dest:renderTo(function()
+		love.graphics.draw(appstate.src, quad, destx, desty)
+	end)
+	draw.setColor()
+end
+
+function draw.text(str, x, y, align, rect)
+	local appstate = vpet.appstack:peek()
+	x = x or 0
+	y = y or 0
+	align = align or 1
+	-- TODO: currently, text uses a special src page that can be colorized. I'd like to generalize this eventually
+	local oldc, bgc = draw.getColor()
+	local oldsrc = appstate.src
+	appstate.src = vpet.hw.output.defaultlcd.vram.font
+	local ch, srcx, srcy, xi, yi, width
+	width = #str * 4
+	xi = ((align - 1) * width) / 2
+	yi = 0
+	if rect then
+		draw.setColor(type(rect) == 'number' and rect or bgc)
+		draw.rect(x + xi - 1, y + yi, width + 1, 8)
+	end
+	-- FIXME: HAAAAXXXX
+	local oldIMAGECOLOR = vpet.IMAGECOLOR
+	vpet.IMAGECOLOR = appstate.desthw:getColorRGB(oldc)
+	for i = 1, #str do
+		ch = str:byte(i)
+		srcx = (ch % 16) * 4
+		srcy = math.floor(ch / 16) * 8
+		draw.blit(srcx, srcy, 4, 8, x + (i - 1) * 4 + xi, y + yi)
+	end
+	vpet.IMAGECOLOR = oldIMAGECOLOR
+	draw.setColor(oldc, bgc)
+	appstate.src = oldsrc
 end

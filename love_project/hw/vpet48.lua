@@ -15,6 +15,8 @@ hw.info = {
 	version = {0, 0, 1},
 }
 
+local basedir = 'vpet64/'
+
 local vpet48dir = 'test/'
 
 local lcd = {
@@ -38,7 +40,7 @@ local lcd = {
 	-- page 0 is always initialized to a blank canvas, and is writable. other pages are read-only (for now)
 		w = 64,
 		h = 64,
-		'vpet64/vram.png',
+		font = basedir..'font.png',
 	},
 	backlight = {
 		color = {0x55, 0xaa, 0xff, 0x55},

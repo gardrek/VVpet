@@ -2,16 +2,20 @@ local game = {}
 
 vpet.loadpage('sprites.png')
 
-local draw = {
-	x = 14,
-	y = 14,
-}
+local board, to_move
 
-local board = {
-	{0, 0, 0},
-	{0, 0, 0},
-	{0, 0, 0},
-}
+function reset()
+	board = {
+		{0, 0, 0},
+		{0, 0, 0},
+		{0, 0, 0},
+		x = 14,
+		y = 14,
+	}
+	to_move = 0
+end
+
+reset()
 
 local cursor={
 	x = 1,
@@ -22,20 +26,18 @@ local drawcursor = false
 
 local cursor_blink = 0
 
-local to_move = 0
-
 function game:draw()
-	cls(0)
-	drawspriteblock(2 * to_move + 11, 0, 2, 2, draw.x - 4, draw.y - 12)
-	drawspriteblock(9, 5, 2, 7, draw.x + 8, draw.y - 12)
-	drawspriteblock(0, 0, 9, 9, draw.x, draw.y)
+	draw.cls(0)
+	drawspriteblock(2 * to_move + 11, 0, 2, 2, board.x - 4, board.y - 12)
+	drawspriteblock(9, 5, 2, 7, board.x + 8, board.y - 12)
+	drawspriteblock(0, 0, 9, 9, board.x, board.y)
 	drawspriteblock(0, 14, 2, 16, 0, 56)
 	for yi = 0, 2 do
 		for xi = 0, 2 do
-			drawspriteblock(2 * board[yi + 1][xi + 1] + 9, 0, 2, 2, draw.x + 12 * xi, draw.y + 12 * yi)
+			drawspriteblock(2 * board[yi + 1][xi + 1] + 9, 0, 2, 2, board.x + 12 * xi, board.y + 12 * yi)
 		end
 	end
-	if drawcursor then drawspriteblock(9, 2, 3, 3, draw.x + 12 * cursor.x, draw.y + 12 * cursor.y) end
+	if drawcursor then drawspriteblock(9, 2, 3, 3, board.x + 12 * cursor.x, board.y + 12 * cursor.y) end
 end
 
 function game:update(dt)
@@ -52,13 +54,8 @@ function game:event(type, data)
 				board[cursor.y + 1][cursor.x + 1] = to_move + 1
 				to_move = 1 - to_move
 			end
-		elseif button == '1' then -- reset
-			board = {
-				{0, 0, 0},
-				{0, 0, 0},
-				{0, 0, 0},
-			}
-			to_move = 0
+		elseif button == '1' then
+			reset()
 		elseif button == 'left' then
 			cursor.x = (cursor.x - 1) % 3
 		elseif button == 'right' then
@@ -81,7 +78,7 @@ function drawspriteblock(sx, sy, w, h, x, y)
 end
 
 function drawsprite(sx,sy,x,y)
-	vpet.blit(sx*4, sy*4, 4, 4, x, y)
+	draw.blit(sx*4, sy*4, 4, 4, x, y)
 end
 
 return game

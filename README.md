@@ -1,8 +1,5 @@
 # vPET-64
 
-## Quick Start
-Right now the easiest way to run your program is to open up the zip/löve file and put your program files in the /rom folder. This will make your program run on boot. Your main lua should be 'cart.lua' and you can have a sprite file called 'sprites.png'
-
 ## Interface
 The main vPET has the following buttons, which are mapped to keys on the keyboard:
 
@@ -10,21 +7,16 @@ The main vPET has the following buttons, which are mapped to keys on the keyboar
 |-|-
 | Directional buttons | WASD / Arrow keys
 | Screen buttons 1, 2, and 3 | 1 / Z, 2 / X, 3 / C
-| Back Button | Tab / Backspace
-| Home Button | R / Escape
+| Back Button | Backspace
+| Home Button | Escape
 
 ## Files
-Currently, the files read for loading an application are:
+Your application should have a unique name, and the location of the main script should be one of the following:
+`$NAME.lua`
+`$NAME/$NAME.lua`
+`$NAME/app.lua`
 
-`cart.lua` — NOTE: this has been renamed to `app.lua` for the post-jam version
-
-`sprites.png`
-
-These must be in the same folder.
-
-In future versions, other files to be loaded will be specified in the lua script.
-
-TODO: Explain Hardware Files
+Any pages must be in the same folder as the main script.
 
 ## Callbacks
 
@@ -39,7 +31,7 @@ Below is a small sample program illustrating this. Note the `table:method` synta
     local bgcolor = 0
 
     function game:draw()
-      cls(bgcolor)
+      vpet.cls(bgcolor)
     end
 
     function game:event(type, data)
@@ -64,7 +56,7 @@ The following are the available callback functions:
 This is called when an event happens. Currently, the only event type is `'button'` and it's data structure is `{button , up , down}`
 `button` is one of the button strings: `'back'`, `'home'`, `'1'`, `'2'`, `'3'`, `'left'`, `'right'`, `'up'`, and `'down'`. `'up` and `'down'` are booleans, giving whether the button is up or down. `'up'` is always the opposite of `'down'`.
 
-These are also subject to change. One thing is, to combine update and draw into one, if possible.
+These are also subject to change.
 
 ## API
 
@@ -75,40 +67,61 @@ a table, but that will be after some major reform.
 Besides the functions below, there is also a read-only `btn` table, giving a boolean for whether each button is pressed.
 
 ---
-`blit(api.blit(srcx, srcy, w, h, destx, desty, src, dest, lcd)`
+`vpet.loadpage(file, page, lcd)`
+Loads an image `file` into page number `page` for drawing onto `lcd`.
+
+---
+`draw.setColor(color, bgcolor)`
+Sets the drawing color, and the background color. If either is not given, it wont be set.
+
+---
+`draw.getColor()`
+returns `color, bgcolor`
+Returns the drawing color and the background color.
+
+---
+`draw.setDest(page, hw)`
+Set the destination for drawing commands. The first argument is which page, the second is which hardware. Hardware choices are `'screen'` for the main LCD screen, `'app'` for pages loaded with `loadpage()`, or a number, for numbered LCD screens.
+
+---
+`draw.setSrc(page, hw)`
+Set the source for drawing commands. The first argument is which page, the second is which hardware. Hardware choices are `'screen'` for the main LCD screen, `'app'` for pages loaded with `loadpage()`, or a number, for numbered LCD screen
+
+---
+`draw.pix(x, y)`
+Colors a single pixel.
+
+---
+`draw.blit(api.blit(srcx, srcy, w, h, destx, desty)`
 
 copies a rectangle of pixels from one page to another (or the same)
 
 TODO: explain this more
 
 ---
-`rect(x, y, w, h, color, dest, lcd)`
+`draw.rect(x, y, w, h)`
 
 fills a rectangle with a single color
 
 ---
+`draw.cls(color)`
 
-The following functions are deprecated.
-
----
-
-`drawsprite(sx, sy, x, y)`
-
-`sx, sy` selects which 4x4 tile to draw
-
-`x, y` is the screen co-ordinates at which to draw it
+If `color` is given, clears the main screen to that color, if not, clears it to the background color.
 
 ---
-`cls(color)`
-
-If `color` is given, clears the main screen to that color, if not, clears it to color 0.
-
----
-`led(on)`
+`vpet.led(on)`
 
 If `on` is given, turns the LED on for true and off for false. Either way, returns whether the LED is on.
+
+---
+`vpet.subapp(appname, cansub)`
+Runs another app, suspending the running app. `appname` is the name of the app, not the file, so if your app is `'game.lua'` or `'game/app.lua'` then `appname` would be `'game'`.
+
+---
+`vpet.quit()`
+Exits the app, returning to the calling app, if there is one.
 
 
 ## Future work
 
-Support for non-square "pixels," which are not in a strict grid is forthcoming. Thus, allowing to create other LCD games, seven-segment displays, etc.
+Virtual hardware specification files are included, and the comments in those files provide enough documentation to make your own hardware. However, this is not documented in this README as it is subject to change. The hardware loading function is full of assumptions and errors waiting to happen. Modify hardware with caution.

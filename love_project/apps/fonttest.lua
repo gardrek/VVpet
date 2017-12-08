@@ -53,20 +53,19 @@ function game:update(dt)
 end
 
 function game:draw()
-	vpet.draw.bgcolor = 0
-	vpet.cls()
-	vpet.blit(4, 4, 20, 20, 10, 10)
-	vpet.draw.color = rectcolor
-	vpet.rect(30, 4, 20, 20, 10, 10)
-	vpet.draw.color = 2
-	vpet.draw.bgcolor = 4
-	vpet.text(s, x, y, align, true)
-	vpet.text('qwertyuiopasdfghjklzxcvbnmQWERTYUIOPAASDFGHJKLZXCVBNM	1234567890 !@#$%^&*()_+-=`~[]\\;\',./{}|<>?:"', x, y + 8, align, vpet.draw.color + 1)
+	draw.setColor(nil, 0)
+	draw.cls()
+	draw.blit(4, 4, 20, 20, 10, 10)
+	draw.setColor(rectcolor)
+	draw.rect(30, 4, 20, 20, 10, 10)
+	draw.setColor(2, 4)
+	draw.text(s, x, y, align, false)
+	draw.setColor(0)
+	draw.text('qwertyuiopasdfghjklzxcvbnmQWERTYUIOPAASDFGHJKLZXCVBNM	1234567890 !@#$%^&*()_+-=`~[]\\;\',./{}|<>?:"', x, y + 8, align, draw.getColor() - 1)
 	local al = 1
 	for off, st in ipairs(menu) do
-		vpet.draw.bgcolor = 7
-		vpet.draw.color = 0
-		vpet.text(st, (off - 1) * 32 + 1, 57, al, true)
+		draw.setColor(0, 7)
+		draw.text(st, (off - 1) * 32 + 1, 57, al, true)
 		al = al - 1
 	end
 end

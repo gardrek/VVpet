@@ -13,23 +13,32 @@ local to_move = 0
 
 -- game.applist is injected by the emulator because cheaty cheat cheat
 
+local menu = {
+	false, --'Info',
+	'Run',
+	false, --'BG   ',
+}
+
 function game:draw()
-	cls()
+	draw.setColor(1, 0)
+	draw.cls()
 	if not self.applist or #self.applist == 0 then
 		vpet.text('no apps', 8, 0)
 	else
-		vpet.draw.color = 1
-		vpet.draw.bgcolor = 0
-		vpet.text('App list', 1, 0, nil, true)
-		vpet.rect(0, 8, 64, 1)
+		draw.text('App list', 1, 0)
+		draw.rect(0, 8, 64, 1)
 		for i, app in ipairs(self.applist) do
 			drawcursor = true
-			vpet.draw.color = drawcursor and i == cursor.index and 0 or 1
-			vpet.draw.bgcolor = 1 - vpet.draw.color
-			vpet.text(app.name or app.file, 1, i * 8 + 2, nil, i == cursor.index)
+			local color = drawcursor and i == cursor.index and 0 or 1
+			draw.setColor(color, 1 - color)
+			draw.text(app.name or app.file, 1, i * 8 + 2, nil, i == cursor.index)
 		end
-		vpet.draw.color = 1
-		vpet.draw.bgcolor = 0
+		draw.setColor(0, 1)
+		for index, menuItem in ipairs(menu) do
+			if type(menuItem) == 'string' then
+				draw.text(menuItem:sub(1, 5), (index - 1) * 32 + 1, 57, 2 - index, true)
+			end
+		end
 	end
 end
 
@@ -49,7 +58,7 @@ function game:event(type, data)
 				if ok then
 					message = 'Loading subapp '..self.applist[cursor.index].name
 				end
-				pprint(message)
+				print(message)
 			elseif button == '1' then
 			elseif button == 'left' then
 			elseif button == 'right' then
