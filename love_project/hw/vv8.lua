@@ -35,9 +35,6 @@ local lcd = {
 		w = 64,
 		h = 64,
 		font = basedir..'font.png',
-		false,
-		false,
-		'pika/pika.png',
 	},
 	backlight = {
 		color = {0x55, 0xaa, 0xff, 0x55},

@@ -12,8 +12,11 @@ The main vPET has the following buttons, which are mapped to keys on the keyboar
 
 ## Files
 Your application should have a unique name, and the location of the main script should be one of the following:
+
 `$NAME.lua`
+
 `$NAME/$NAME.lua`
+
 `$NAME/app.lua`
 
 Any pages must be in the same folder as the main script.
@@ -46,13 +49,8 @@ Below is a small sample program illustrating this. Note the `table:method` synta
 
     return game
 
-The following are the available callback functions:
+The following are the available callback functions: `draw()`, `update(dt)`, `event(type, data)`
 
-`draw()`
-
-`update(dt)`
-
-`event(type, data)`
 This is called when an event happens. Currently, the only event type is `'button'` and it's data structure is `{button , up , down}`
 `button` is one of the button strings: `'back'`, `'home'`, `'1'`, `'2'`, `'3'`, `'left'`, `'right'`, `'up'`, and `'down'`. `'up` and `'down'` are booleans, giving whether the button is up or down. `'up'` is always the opposite of `'down'`.
 
@@ -68,27 +66,48 @@ Besides the functions below, there is also a read-only `btn` table, giving a boo
 
 ---
 `vpet.loadpage(file, page, lcd)`
+
 Loads an image `file` into page number `page` for drawing onto `lcd`.
 
 ---
 `draw.setColor(color, bgcolor)`
+
 Sets the drawing color, and the background color. If either is not given, it wont be set.
 
 ---
 `draw.getColor()`
+
 returns `color, bgcolor`
+
 Returns the drawing color and the background color.
 
 ---
 `draw.setDest(page, hw)`
+
 Set the destination for drawing commands. The first argument is which page, the second is which hardware. Hardware choices are `'screen'` for the main LCD screen, `'app'` for pages loaded with `loadpage()`, or a number, for numbered LCD screens.
 
 ---
 `draw.setSrc(page, hw)`
+
 Set the source for drawing commands. The first argument is which page, the second is which hardware. Hardware choices are `'screen'` for the main LCD screen, `'app'` for pages loaded with `loadpage()`, or a number, for numbered LCD screen
 
 ---
+`draw.cls(color)`
+
+If `color` is given, clears the main screen to that color, if not, clears it to the background color.
+
+---
+`draw.rect(x, y, w, h)`
+
+Fills a rectangle with a single color.
+
+`x` and `y`  default to `0`.
+
+`w` and `h`  default to the width and height of the screen, respectively.
+
+---
 `draw.pix(x, y)`
+
 Colors a single pixel.
 
 ---
@@ -99,14 +118,9 @@ copies a rectangle of pixels from one page to another (or the same)
 TODO: explain this more
 
 ---
-`draw.rect(x, y, w, h)`
+`draw.text(str, x, y, align, rect)`
 
-fills a rectangle with a single color
-
----
-`draw.cls(color)`
-
-If `color` is given, clears the main screen to that color, if not, clears it to the background color.
+Draws string `str` at co-ordinates `x, y`. `align` is a number representing alignment, 1 for right-aligned (default), 0 for centered, -1 for left-aligned. If rect is true, a rectangle will be drawn behind the text, using the background color. If rect is false, no rectangle will be drawn. If rect is a color, that color will be used for the rectangle.
 
 ---
 `vpet.led(on)`
@@ -115,10 +129,12 @@ If `on` is given, turns the LED on for true and off for false. Either way, retur
 
 ---
 `vpet.subapp(appname, cansub)`
+
 Runs another app, suspending the running app. `appname` is the name of the app, not the file, so if your app is `'game.lua'` or `'game/app.lua'` then `appname` would be `'game'`.
 
 ---
 `vpet.quit()`
+
 Exits the app, returning to the calling app, if there is one.
 
 

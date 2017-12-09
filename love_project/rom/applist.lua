@@ -9,8 +9,6 @@ local drawcursor = false
 
 local cursor_blink = 0
 
-local to_move = 0
-
 -- game.applist is injected by the emulator because cheaty cheat cheat
 
 local menu = {
@@ -23,7 +21,7 @@ function game:draw()
 	draw.setColor(1, 0)
 	draw.cls()
 	if not self.applist or #self.applist == 0 then
-		vpet.text('no apps', 8, 0)
+		draw.text('no apps', 8, 0)
 	else
 		draw.text('App list', 1, 0)
 		draw.rect(0, 8, 64, 1)
