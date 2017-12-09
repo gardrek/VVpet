@@ -750,8 +750,9 @@ function vpet:loadhardware(file, dir)
 					unit.bgcolor = o.bgcolor
 					unit.colors = o.colors
 					if unit.colors then
+						unit.colornames = o.colornames or {}
 						function unit:getColorRGB(index)
-							return self.colors[index] or self.colornames[index] or self.colornames[1]
+							return self.colors[index] or self.colornames[index] or self.colors[1]
 						end
 					end
 					if o.vram then
