@@ -8,10 +8,10 @@
 
 --if not success then print('no hw') return nil end
 
-hw = dofile(hwdir..'vpet_base.lua')
+local hw = dofile(hwdir..'vpet_base.lua')
 
 hw.info = {
-	name = 'SUPERtest',
+	name = 'VV8',
 	version = {0, 0, 1},
 }
 
@@ -29,28 +29,6 @@ local lcd = {
 	w = 68,
 	h = 68,
 	bgcolor = {0xee, 0xff, 0xee},
-	--[[ Pikachu Palette
-	colors = {
-		[0] =
-		{0xdd, 0xee, 0xcc},
-		{0x11, 0x11, 0x22},
-		{0xee, 0xcc, 0x22},
-		{0xcc, 0x33, 0x00},
-	},
-	--]]
-	--[[ MATRIAX8C
-	colors = {
-		[0] =
-		{0xf0, 0xf0, 0xdc},
-		{0xfa, 0xc8, 0x00},
-		{0x10, 0xc8, 0x40},
-		{0x00, 0xa0, 0xc8},
-		{0xd2, 0x40, 0x40},
-		{0xa0, 0x69, 0x4b},
-		{0x73, 0x64, 0x64},
-		{0x10, 0x18, 0x20},
-	},
-	--]]
 	vram = {
 	-- vram is basically a set of spritesheets called pages
 	-- page 0 is always initialized to a blank canvas, and is writable. other pages are read-only (for now)
@@ -66,7 +44,7 @@ local lcd = {
 	},
 }
 
----[[ VV8 color
+-- VV8 color
 lcd.bgcolor = {0xff, 0xff, 0xee}
 
 lcd.colors = {}
@@ -94,12 +72,6 @@ lcd.colornames = {
 	Black = 7,
 }
 
---[[
-for i = 0, #lcd.colors do
-	print('index', i, 'rgb:', unpack(lcd.colors[i]))
-end
---]]
-
 for index, color in pairs(lcd.colors) do
 	for channel, value in pairs(color) do
 		if value > 0xff then
@@ -108,38 +80,6 @@ for index, color in pairs(lcd.colors) do
 		end
 	end
 end
---]]
-
---[[
-for i = -1, 1, 2 do
-	table.insert(hw.output, {
-		-- the led unit is a simple light that can be on or off
-		type = 'led',
-		x = i * 16,
-		y = -56,
-		w = 4,
-		h = 4,
-		image_on = basedir..'led_on.png',
-		image_off = basedir..'led_off.png',
-	})
-end
-
-for i = 0, 0 do
-	table.insert(lcd, {
-		-- the dotmatrix unit is a rectangular array of pixels on an lcd.
-		-- NOTE: the co-ordinates here are relative to the CENTER of the LCD screen
-		type = 'dotmatrix',
-		x = 0,
-		y = i*32 - 24,
-		w = 32,
-		h = 16,
-		page = 0,
-		pagex = 16 * i,
-		pagey = 0,
-		scale = 2,
-	})
-end
---]]
 
 table.insert(lcd, {
 	type = 'dotmatrix',
@@ -154,7 +94,6 @@ table.insert(lcd, {
 })
 
 table.insert(hw.output, lcd)
-
 
 for k,v in pairs(hw.input.buttons) do
 	if tonumber(k) then -- this is hacky, but I like it

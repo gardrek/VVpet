@@ -9,26 +9,23 @@ function game:update(dt)
 end
 
 function game:draw()
-	cls(bgcolor)
+	draw.cls(bgcolor)
 	for yi = 0, 15 do
 		for xi = 0, 15 do
 			offset = -math.floor(math.sin((n - yi * 4)/17) * 4)
 			blit(xi * 4, yi * 4, 4, 4, xi * 4 + offset, yi * 4)
 		end
 	end
-	vpet.draw.src = 1
-	blit(32, 0, 8, 8, 0, 0)
-	vpet.draw.src = 2
 end
 
 function game:event(type, data)
 	if type == 'button' and data.button == '2' then
 		if data.down then
 			bgcolor = 1
-			led(false)
+			vpet.led(false)
 		else
 			bgcolor = 0
-			led(true)
+			vpet.led(true)
 		end
 	end
 end

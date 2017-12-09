@@ -42,7 +42,7 @@ function love.load()
 	-- stores a table of which button inputs are down
 	vpet.input = {}
 
-	vpet.inputreversemap = {} -- Oh, I'm not like the input at all... Some would say, I'm the reverse.
+	vpet.inputreversemap = {} -- Oh, I'm not like the input at all... Some would say, I'm the Reverse.
 
 	for button, vvv in pairs(vpet.inputmap) do
 		for iii, emukey in ipairs(vvv) do
@@ -69,8 +69,8 @@ function love.load()
 		'math', 'table', 'string'
 	}
 	for i, v in ipairs(env_globals) do
-		vpet.env[v]=_G[v]
-		vpet.hwenv[v]=_G[v]
+		vpet.env[v] = _G[v]
+		vpet.hwenv[v] = _G[v]
 	end
 	vpet.env.vpet = {}
 	for k, v in pairs(api) do
@@ -94,6 +94,7 @@ function love.load()
 	vpet.hw = vpet:loadhardware('vpet64.lua', vpet.hwdir)
 	--vpet.hw = vpet:loadhardware('vpet48.lua', vpet.hwdir)
 	--vpet.hw = vpet:loadhardware('vpet_supertest.lua', vpet.hwdir)
+	--vpet.hw = vpet:loadhardware('vv8.lua', vpet.hwdir)
 
 	if not vpet.hw then
 		error('Base hardware failed to load!')
@@ -750,7 +751,7 @@ function vpet:loadhardware(file, dir)
 					unit.colors = o.colors
 					if unit.colors then
 						function unit:getColorRGB(index)
-							return self.colors[index] or self.colors[1]
+							return self.colors[index] or self.colornames[index] or self.colornames[1]
 						end
 					end
 					if o.vram then
@@ -895,7 +896,6 @@ function api.loadpage(file, page, lcd)
 	else
 		appstate.vram[page] = vpet:newpage(nil, lcd)
 	end
-	print(unpack(lcd.vram))
 	return page
 end
 
@@ -936,6 +936,7 @@ function api.subapp(appname, cansub)
 		vpet.app = vpet.appstack:peek().app -- FIXME: remove vpet.app or replace with metatable
 		if cansub then vpet.appstack:peek().app.applist = vpet:listapps('apps/') end
 		vpet.cansub = cansub
+		return true
 	else
 		return false, appdir
 	end
@@ -943,9 +944,7 @@ end
 
 function api.quit()
 	if #vpet.appstack > 1 then
-		print(unpack(vpet.appstack))
 		vpet.appstack:pop()
-		print(unpack(vpet.appstack))
 		vpet.app = vpet.appstack:peek().app -- FIXME: remove vpet.app or replace with metatable
 		vpet.cansub = true
 	end
