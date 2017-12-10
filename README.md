@@ -1,7 +1,9 @@
 # VVpet
 
 ## Interface
-The main vPET has the following buttons, which are mapped to keys on the keyboard:
+VVpet is an emulator for virtual pets that never existed. VVpet is not precisely a fantasy console, but rather a set of related fantasy consoles and tools to create your own. The vPET series of consoles includes flagship vPET64, the main which the others are essentially variations of.
+
+Consoles in the vPET series have the following buttons, which are mapped to keys on the keyboard:
 
 | vPET | Emulator Key |
 |-|-
