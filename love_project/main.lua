@@ -5,6 +5,9 @@ local mouse = {}
 local draw = {}
 
 function love.load()
+
+	love.filesystem.load('hw/vpet64.lua')
+
 	-- Love set-up stuff
 	io.stdout:setvbuf('no') -- enable normal use of the print() command
 	love.graphics.setDefaultFilter('nearest', 'nearest', 0) -- Pixel scaling
@@ -83,6 +86,18 @@ function love.load()
 	vpet.env._G = vpet.env
 	vpet.hwenv._G = vpet.hwenv
 
+	vpet.hwenv.inherithw = function(script)
+		local f = vpet:loadscript(script, vpet.hwenv)
+		if not f then
+			error('Hardware file' .. script .. ' could not be loaded')
+		end
+		local hw = f()
+		if type(hw) ~= 'table' then
+			error('Hardware file' .. script .. ' did not return table')
+		end
+		return hw
+	end
+
 	-- hardware uses these variables to load _other_ hardware
 	vpet.hwenv.dofile = _G.dofile
 	vpet.hwenv.hwdir = 'hw/'
@@ -91,12 +106,15 @@ function love.load()
 
 	-- load hardware --------
 
-	vpet.hw = vpet:loadhardware('vpet64.lua', vpet.hwdir)
+	local err
+	--vpet.hw, err = vpet:loadhardware('vpet64.lua', vpet.hwdir)
 	--vpet.hw = vpet:loadhardware('vpet48.lua', vpet.hwdir)
 	--vpet.hw = vpet:loadhardware('vpet_supertest.lua', vpet.hwdir)
-	--vpet.hw = vpet:loadhardware('vv8.lua', vpet.hwdir)
+	vpet.hw = vpet:loadhardware('vv8.lua', vpet.hwdir)
 
 	if not vpet.hw then
+		print('Hardware failed to load with the following error:')
+		print(err)
 		error('Base hardware failed to load!')
 	end
 
@@ -459,7 +477,10 @@ function vpet:loadscript(script, env)
 		return false
 	end
 	local ok, f = pcall(love.filesystem.load, script)
-	if not ok then print('script '..script..' failed to load: script error') return false, f end
+	if not ok then
+		print('script '..script..' failed to load')
+		return false
+	end
 	setfenv(f, env or self.env)
 	--print('script '..script..' loaded')
 	return f
@@ -551,7 +572,8 @@ end
 function vpet:loadhardware(file, dir)
 	dir = dir or self.hwenv.hwdir
 
-	local success, hw, err = pcall(vpet:loadscript(dir..file, self.hwenv))
+	local success, hw = pcall(vpet:loadscript(dir..file, self.hwenv))
+
 	local loaded = {}
 	--loaded.dir = dir
 	local hw_errors = 0
@@ -577,43 +599,10 @@ function vpet:loadhardware(file, dir)
 		return ...
 	end
 
-	function old_load_images(dest, source, names, errormessage)
-		-- TODO: refactor this function: DRY
-		if not names then
-			for i, v in ipairs(source) do
-				if type(v) == 'string' then
-					file = dir..v
-					if love.filesystem.exists(file) then
-						dest[i] = love.graphics.newImage(file)
-					else
-						print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
-						hw_errors = hw_errors + 1
-					end
-				elseif v then
-					dest[i] = false
-					print('hardware '..id..': '..errormessage..' image: "'..tostring(v)..'" not a string')
-					hw_warnings = hw_warnings + 1
-				end
-			end
-		else
-			for i, v in ipairs(names) do
-				if type(v) == 'string' then
-					if source[v] then
-						file = dir..source[v]
-						if love.filesystem.exists(file) then
-							dest[v] = love.graphics.newImage(file)
-						else
-							print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
-							hw_errors = hw_errors + 1
-						end
-					elseif v then
-						dest[v] = false
-						print('hardware '..id..': '..errormessage..' image: "'..tostring(v)..'" not a string')
-						hw_warnings = hw_warnings + 1
-					end
-				end
-			end
-		end
+	if not success then
+		hw_errors = -1
+		print(hw)
+		return finish(false, hw)
 	end
 
 	function load_images(dest, source, names, errormessage)
@@ -658,12 +647,6 @@ function vpet:loadhardware(file, dir)
 				end
 			end
 		end
-	end
-
-	if not success then
-		hw_errors = -1
-		print(hw, err)
-		return finish(false, err)
 	end
 
 	if type(hw) ~='table' then

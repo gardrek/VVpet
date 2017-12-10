@@ -1,14 +1,8 @@
--- testing for pixelimage support
-
 -- hw description returns a table with at least the members output and input
 -- the format of the table is detailed below
 -- all x, y co-ordinates are measured with the origin at the CENTER of the device
 
---local success, hw = loadscript('hw/vpet_base.lua')
-
---if not success then print('no hw') return nil end
-
-hw = dofile(hwdir..'vpet_base.lua')
+local hw = inherithw(hwdir..'vpet_base.lua')
 
 hw.info = {
 	name = 'vPET64',

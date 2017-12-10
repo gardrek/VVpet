@@ -8,14 +8,14 @@
 
 --if not success then print('no hw') return nil end
 
-hw = dofile(hwdir..'vpet_base.lua')
+local hw = inherithw(hwdir..'vpet_base.lua')
+
+local basedir = 'vpet64/'
 
 hw.info = {
 	name = 'SUPERtest',
 	version = {0, 0, 1},
 }
-
-local basedir = 'vpet64/'
 
 local lcd = {
 	-- the lcd unit contains other units specific to it. these units should not appear outside an lcd unit

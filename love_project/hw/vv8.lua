@@ -8,7 +8,7 @@
 
 --if not success then print('no hw') return nil end
 
-local hw = dofile(hwdir..'vpet_base.lua')
+local hw = inherithw(hwdir..'vpet_base.lua')
 
 hw.info = {
 	name = 'VV8',
