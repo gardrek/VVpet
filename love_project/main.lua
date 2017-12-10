@@ -91,10 +91,10 @@ function love.load()
 
 	-- load hardware --------
 
-	--vpet.hw = vpet:loadhardware('vpet64.lua', vpet.hwdir)
+	vpet.hw = vpet:loadhardware('vpet64.lua', vpet.hwdir)
 	--vpet.hw = vpet:loadhardware('vpet48.lua', vpet.hwdir)
 	--vpet.hw = vpet:loadhardware('vpet_supertest.lua', vpet.hwdir)
-	vpet.hw = vpet:loadhardware('vv8.lua', vpet.hwdir)
+	--vpet.hw = vpet:loadhardware('vv8.lua', vpet.hwdir)
 
 	if not vpet.hw then
 		error('Base hardware failed to load!')
