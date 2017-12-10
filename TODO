@@ -1,0 +1,25 @@
+New features:
+  - Ghosting
+  - Touch and Android
+  √ Launching an app from another app
+    √ a launcher would be nice
+  - what about selecting hardware?
+    - and determining what hardware you are on at run-time
+    - this ties into colors, as there's no way to enumerate colors as names or even get a numberof colors
+
+Improvements:
+  - mouse control needs improvement
+  - clean up the mess of a filesystem
+  √ named colors
+    - could still be improved
+  - Interface for apps to read info about the hardware they're running on
+
+Bug Fixes/Glaring Problems:
+  - Checking of hardware sanity
+  - Stopping crashes which occur from accessing unavailable hardware/vram pages
+  - Fix the roundabout and frankly hideous way that graphics pages are selected
+    √ kind of fixed?
+  - Fix it so that loading new hardware sets minw and minh
+
+Small things:
+  - Stop from changing to a cozy level which would give a smaller scale than the lowest

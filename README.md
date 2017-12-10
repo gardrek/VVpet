@@ -1,4 +1,4 @@
-# vPET-64
+# VVpet
 
 ## Interface
 The main vPET has the following buttons, which are mapped to keys on the keyboard:
