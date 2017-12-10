@@ -61,7 +61,7 @@ function game:draw()
 	draw.setColor(2, 4)
 	draw.text(s, x, y, align, false)
 	draw.setColor(0)
-	draw.text('qwertyuiopasdfghjklzxcvbnmQWERTYUIOPAASDFGHJKLZXCVBNM	1234567890 !@#$%^&*()_+-=`~[]\\;\',./{}|<>?:"', x, y + 8, align, draw.getColor() - 1)
+	draw.text('qwertyuiopasdfghjklzxcvbnmQWERTYUIOPAASDFGHJKLZXCVBNM	1234567890 !@#$%^&*()_+-=`~[]\\;\',./{}|<>?:"', x, y + 8, align, 'Black')
 	local al = 1
 	for off, st in ipairs(menu) do
 		draw.setColor(0, 7)

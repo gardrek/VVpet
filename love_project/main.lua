@@ -551,7 +551,7 @@ end
 function vpet:loadhardware(file, dir)
 	dir = dir or self.hwenv.hwdir
 
-	local success, hw, error = pcall(vpet:loadscript(dir..file, self.hwenv))
+	local success, hw, err = pcall(vpet:loadscript(dir..file, self.hwenv))
 	local loaded = {}
 	--loaded.dir = dir
 	local hw_errors = 0
@@ -662,8 +662,8 @@ function vpet:loadhardware(file, dir)
 
 	if not success then
 		hw_errors = -1
-		print(hw, error)
-		return finish(false, error)
+		print(hw, err)
+		return finish(false, err)
 	end
 
 	if type(hw) ~='table' then
@@ -752,7 +752,12 @@ function vpet:loadhardware(file, dir)
 					if unit.colors then
 						unit.colornames = o.colornames or {}
 						function unit:getColorRGB(index)
-							return self.colors[index] or self.colors[self.colornames[index]] or self.colors[1]
+							local color = self.colors[index] or self.colors[self.colornames[index]]
+							if color then
+								return color
+							else
+								error('color ' .. tostring(index) .. ' does not exist', 2)
+							end
 						end
 					end
 					if o.vram then
