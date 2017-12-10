@@ -1,0 +1,3 @@
+print(THISISATEST)
+
+return {}

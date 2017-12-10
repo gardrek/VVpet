@@ -63,8 +63,8 @@ function love.load()
 		--'loadstring', 'setfenv', 'rawequal', 'rawget', 'rawset',
 		'assert', 'error', 'getmetatable', 'ipairs',
 		'next', 'pairs', 'pcall', 'print',
-		'select', 'tonumber', 'tostring', 'type',
-		'unpack', '_VERSION', 'xpcall',
+		'select', 'setmetatable', 'tonumber', 'tostring',
+		'type', 'unpack', '_VERSION', 'xpcall',
 		-- Libraries
 		'math', 'table', 'string'
 	}
@@ -1034,16 +1034,26 @@ end
 
 function draw.rect(x, y, w, h)
 	local appstate = vpet.appstack:peek()
-	x = x or 0
-	y = y or 0
-	w = w or appstate.dest:getWidth()
-	h = h or appstate.dest:getHeight()
+	if type(x) == 'table' then
+		local rect = x
+		x = rect.x or 0
+		y = rect.y or 0
+		w = rect.w or appstate.dest:getWidth()
+		h = rect.h or appstate.dest:getHeight()
+	else
+		x = x or 0
+		y = y or 0
+		w = w or appstate.dest:getWidth()
+		h = h or appstate.dest:getHeight()
+	end
 	appstate.dest:renderTo(function()
 		love.graphics.rectangle('fill', x, y, w, h)
 	end)
 end
 
 function draw.pix(x, y)
+	x = math.floor(x)
+	y = math.floor(y)
 	vpet.appstack:peek().dest:renderTo(function()
 		love.graphics.points(x, y + 1) -- UPSTREAM: LOVE2D has an off-by-one error to account for here
 	end)
@@ -1068,6 +1078,7 @@ end
 
 function draw.text(str, x, y, align, rect)
 	local appstate = vpet.appstack:peek()
+	str = tostring(str)
 	x = x or 0
 	y = y or 0
 	align = align or 1
@@ -1095,4 +1106,30 @@ function draw.text(str, x, y, align, rect)
 	vpet.IMAGECOLOR = oldIMAGECOLOR
 	draw.setColor(oldc, bgc)
 	appstate.src = oldsrc
+end
+
+function draw.line(x0, y0, x1, y1)
+	x0 = math.floor(x0)
+	x1 = math.floor(x1)
+	y0 = math.floor(y0)
+	y1 = math.floor(y1)
+	local dx = math.abs(x1 - x0)
+	local sx = x0 < x1 and 1 or -1
+	local dy = math.abs(y1 - y0)
+	local sy = y0 < y1 and 1 or -1
+	local err = math.floor((dx > dy and dx or -dy) / 2)
+	local e2 = 0
+	while true do
+		draw.pix(x0, y0)
+		if x0 == x1 and y0 == y1 then break end
+		e2 = err
+		if e2 >= -dx then
+			err = err - dy
+			x0 = x0 + sx
+		end
+		if e2 < dy then
+			err = err + dx
+			y0 = y0 + sy
+		end
+	end
 end

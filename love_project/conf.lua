@@ -1,8 +1,8 @@
 function love.conf(t)
-	t.identity = 'vPET-64'              -- The name of the save directory (string)
+	t.identity = 'VVpet'              -- The name of the save directory (string)
 	t.gammacorrect = false              -- Enable gamma-correct rendering, when supported by the system (boolean)
 
-	t.window.title = 'vPET-64'          -- The window title (string)
+	t.window.title = 'VVpet'          -- The window title (string)
 	t.window.icon = 'icon.png'          -- Filepath to an image to use as the window's icon (string)
 	t.window.width = 800               -- The window width (number)
 	t.window.height = 600               -- The window height (number)

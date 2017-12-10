@@ -1,0 +1,3 @@
+THISISATEST = 'wheee~'
+
+return {}
