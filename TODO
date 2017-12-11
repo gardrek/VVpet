@@ -1,25 +1,35 @@
 New features:
-  - Ghosting
+  - LCD Ghosting
   - Touch and Android
-  √ Launching an app from another app
-    √ a launcher would be nice
-  - what about selecting hardware?
-    - and determining what hardware you are on at run-time
+  - some form of hardware selection
+  - API for apps to enumerate hardware at run-time, and read info about it
     - this ties into colors, as there's no way to enumerate colors as names or even get a numberof colors
+    - This way, accessing unavailable hardware/vram pages can be avoided
+  - config file
+  - Separate environment for each app, and an API for inter-app communication
+  - individual hardware component scaling
 
 Improvements:
   - mouse control needs improvement
   - clean up the mess of a filesystem
-  √ named colors
-    - could still be improved
-  - Interface for apps to read info about the hardware they're running on
+    - rom/ folder needs a better name, and maybe to be moved?
+  √ Launching an app from another app
+    √ a launcher would be nice
+      - improve the launcher, and maybe begin work on a simple multitasking OS
+  - Replace btn array with something else
+    - Might as well be a function since you can't iterate over it
+      - maybe a function that returns a table you _can_ iterate over?
 
 Bug Fixes/Glaring Problems:
   - Checking of hardware sanity
-  - Stopping crashes which occur from accessing unavailable hardware/vram pages
   - Fix the roundabout and frankly hideous way that graphics pages are selected
     √ kind of fixed?
-  - Fix it so that loading new hardware sets minw and minh
+  - Fix it so that loading new hardware sets minw and minh of the window context
 
 Small things:
-  - Stop from changing to a cozy level which would give a smaller scale than the lowest
+  √ Stop from changing to a cozy level which would give a smaller scale than the lowest
+    - improvement: allow cozy level to be higher than max, but don't _change to_ a cozy level higher than max
+
+Way in the future plans
+  - Networking
+  - Actual games and software for the vPET line

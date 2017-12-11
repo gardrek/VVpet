@@ -1,3 +1,0 @@
-THISISATEST = 'wheee~'
-
-return {}

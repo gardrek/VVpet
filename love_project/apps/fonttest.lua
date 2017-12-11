@@ -1,7 +1,7 @@
 local game = {}
 
-local textcolor = 8
-local rectcolor = 2
+local textcolor = 'Black'
+local rectcolor = 'Green'
 local align = 1
 local x, y = 32, 32
 local speed = 120
@@ -53,18 +53,18 @@ function game:update(dt)
 end
 
 function game:draw()
-	draw.setColor(nil, 0)
+	draw.setColor(nil, 'White')
 	draw.cls()
 	draw.blit(4, 4, 20, 20, 10, 10)
 	draw.setColor(rectcolor)
 	draw.rect(30, 4, 20, 20, 10, 10)
-	draw.setColor(2, 4)
+	draw.setColor('Green', 'Yellow')
 	draw.text(s, x, y, align, false)
-	draw.setColor(0)
-	draw.text('qwertyuiopasdfghjklzxcvbnmQWERTYUIOPAASDFGHJKLZXCVBNM	1234567890 !@#$%^&*()_+-=`~[]\\;\',./{}|<>?:"', x, y + 8, align, 'Black')
+	draw.setColor('Red')
+	draw.text('qwertyuiopasdfghjklzxcvbnmQWERTYUIOPAASDFGHJKLZXCVBNM	1234567890 !@#$%^&*()_+-=`~[]\\;\',./{}|<>?:"', x, y + 8, align, 'Blue')
 	local al = 1
 	for off, st in ipairs(menu) do
-		draw.setColor(0, 7)
+		draw.setColor('Black', 'White')
 		draw.text(st, (off - 1) * 32 + 1, 57, al, true)
 		al = al - 1
 	end

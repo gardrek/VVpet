@@ -5,9 +5,6 @@ local mouse = {}
 local draw = {}
 
 function love.load()
-
-	love.filesystem.load('hw/vpet64.lua')
-
 	-- Love set-up stuff
 	io.stdout:setvbuf('no') -- enable normal use of the print() command
 	love.graphics.setDefaultFilter('nearest', 'nearest', 0) -- Pixel scaling
@@ -22,8 +19,33 @@ function love.load()
 	emu.bg = {
 		x = 0,
 		y = 0,
-		image = love.graphics.newImage('bg.jpg')
+		--imagefile = 'bg.jpg',
+		imagefile = 'hw/space/bg.jpg',
 	}
+	if love.filesystem.exists(emu.bg.imagefile) then
+		emu.bg.image = love.graphics.newImage(emu.bg.imagefile)
+	else
+		local img = love.graphics.newCanvas()
+		img:renderTo(function()
+			love.graphics.clear(0x33, 0x33, 0x33)
+		end)
+		emu.bg.image = love.graphics.newImage(img:newImageData())
+	end
+	function emu:setcozy(newcozy)
+		if newcozy then
+			self.cozy = newcozy
+		end
+		if self.cozy < 0 then
+			self.cozy = 0
+		end
+		local w = love.graphics.getWidth()
+		local h = love.graphics.getHeight()
+		local scale = math.min(math.floor(w / vpet.hw.base.minw), math.floor(h / vpet.hw.base.minh))
+		if scale - self.cozy < 1 then
+			self.cozy = scale - 1
+		end
+		self.scale = math.max(scale - self.cozy, 1)
+	end
 
 	vpet.inputmap = {
 		-- system buttons - these buttons are handled differently when an app is run from inside another app
@@ -35,6 +57,9 @@ function love.load()
 		['1'] = {'1', 'z'},
 		['2'] = {'2', 'x'},
 		['3'] = {'3', 'c'},
+		-- action buttons - NOTE: the vPET line does not have action buttons
+		a = {'lctrl', 'rctrl', 'v', 'n'},
+		b = {'lshift', 'lshift', 'b'},
 		-- direction buttons:
 		left = {'a', 'left'},
 		right = {'d', 'right'},
@@ -104,13 +129,40 @@ function love.load()
 
 	vpet.env.vpet.btn = vpet:readonlytable(vpet.input) -- This way, apps can't spoof the table
 
+	-- Fallback colors, for finding the closest color to common color names
+	vpet.fallbackcolors = {
+		-- 1-bit RGB
+		Black = {0x00, 0x00, 0x00},
+		Blue = {0x00, 0x00, 0xff},
+		Green = {0x00, 0xff, 0x00},
+		Cyan = {0x00, 0xff, 0xff},
+		Red = {0xff, 0x00, 0x00},
+		Magenta = {0xff, 0x00, 0xff},
+		Yellow = {0xff, 0xff, 0x00},
+		White = {0xff, 0xff, 0xff},
+		-- Extra common colors
+		Gray = {0x7f, 0x7f, 0x7f},
+		Grey = {0x7f, 0x7f, 0x7f},
+		Orange = {0xff, 0x7f, 0x00},
+		Pink = {0xff, 0x00, 0x7f},
+	}
+
+	local _usedfallbackcolor = {}
+	vpet.usedfallbackcolor = function(index)
+		if not _usedfallbackcolor[index] then
+			print('Using fallback color "' .. index .. '".')
+			_usedfallbackcolor[index] = true
+		end
+	end
+
 	-- load hardware --------
 
 	local err
-	--vpet.hw, err = vpet:loadhardware('vpet64.lua', vpet.hwdir)
+	vpet.hw, err = vpet:loadhardware('vpet64.lua', vpet.hwdir)
 	--vpet.hw = vpet:loadhardware('vpet48.lua', vpet.hwdir)
 	--vpet.hw = vpet:loadhardware('vpet_supertest.lua', vpet.hwdir)
-	vpet.hw = vpet:loadhardware('vv8.lua', vpet.hwdir)
+	--vpet.hw = vpet:loadhardware('vv8.lua', vpet.hwdir)
+	--vpet.hw, err = vpet:loadhardware('space.lua', vpet.hwdir)
 
 	if not vpet.hw then
 		print('Hardware failed to load with the following error:')
@@ -142,8 +194,10 @@ function love.load()
 	--appname = 'fonttest'
 	--appname = 'tictactoe'
 	appname = 'applist'
+	--appname = 'shooter'
 
 	vpet.appdir = 'rom/' -- FIXME:HAXXXX
+	--vpet.appdir = 'hw/space/apps/' -- FIXME:HAXXXX
 	vpet.cansub = true
 	api.subapp(appname, true)
 	vpet.appdir = nil -- FIXME:HAXXXX
@@ -326,28 +380,30 @@ function love.draw()
 			0, 0,
 			0, emu.scale
 		)
+		local x, y, w, h, index
+		h = love.graphics.getHeight() / 20
+		w = h
+		x = love.graphics.getWidth() - w
+		index = 1
+		for name, color in pairs(vpet.fallbackcolors) do
+			love.graphics.setColor(color)
+			y = (index - 1) * h
+			love.graphics.rectangle('fill', x, y, w, h)
+			index = index + 1
+		end
 	end
 end
 
 function love.keypressed(key, scancode, isrepeat)
 	if not isrepeat then
-		if key == '8' then
+		--if vpet.DEBUG then print(key, 'pressed') end
+		if key == 'f7' then
 			vpet.DEBUG = not vpet.DEBUG
-		elseif key == '9' then
-			emu.cozy = emu.cozy - 1
-			if emu.cozy < 0 then
-				emu.cozy = 0
-			end
-			love.resize()
-		elseif key == '0' then
-			emu.cozy = emu.cozy + 1
-			if emu.cozy > 7 then
-				emu.cozy = 7
-			end
-			love.resize()
+		elseif key == '-' then
+			emu:setcozy(emu.cozy + 1)
+		elseif key == '=' then
+			emu:setcozy(emu.cozy - 1)
 		end
-		--print(emu.cozy)
-		--print(key, 'pressed')
 		if vpet.inputreversemap[key] then
 			vpet:setInput(vpet.inputreversemap[key], true)
 		end
@@ -363,14 +419,12 @@ end
 function love.resize(w, h)
 	w = w or love.graphics.getWidth()
 	h = h or love.graphics.getHeight()
-	--print(w,h)
 	emu.center.x = math.floor(w/2)
 	emu.center.y = math.floor(h/2)
 	emu.bg.scale = math.max(w / emu.bg.image:getWidth(), h / emu.bg.image:getHeight())
 	emu.bg.x = emu.center.x - (emu.bg.image:getWidth()/2 * emu.bg.scale)
 	emu.bg.y = emu.center.y - (emu.bg.image:getHeight()/2 * emu.bg.scale)
-	local scale = math.min(math.floor(w / vpet.hw.base.minw), math.floor(h / vpet.hw.base.minh))
-	emu.scale = math.max(scale - emu.cozy, 1)
+	emu:setcozy()
 end
 
 function vpet:setInput(button, pressed)
@@ -392,7 +446,7 @@ function vpet:closest_color_index(colors, r, g, b, a)
 	if type(r) == 'table' then
 		r, g, b, a = unpack(r)
 	end
-	if type(a) == nil then a = 0 end
+	if not a then a = 0 end
 	a = a < 128 and 0 or 255
 	local distance
 	local closest = 0xffffff
@@ -739,7 +793,12 @@ function vpet:loadhardware(file, dir)
 							if color then
 								return color
 							else
-								error('color ' .. tostring(index) .. ' does not exist', 2)
+								if vpet.fallbackcolors[index] then
+									vpet.usedfallbackcolor(index)
+									return self.colors[vpet:closest_color_index(self.colors, vpet.fallbackcolors[index])]
+								else
+									error('color ' .. tostring(index) .. ' does not exist', 2)
+								end
 							end
 						end
 					end

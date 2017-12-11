@@ -18,7 +18,7 @@ local menu = {
 }
 
 function game:draw()
-	draw.setColor(1, 0)
+	draw.setColor('Black', 'White')
 	draw.cls()
 	if not self.applist or #self.applist == 0 then
 		draw.text('no apps', 8, 0)
