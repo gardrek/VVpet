@@ -19,8 +19,8 @@ function love.load()
 	emu.bg = {
 		x = 0,
 		y = 0,
-		--imagefile = 'bg.jpg',
-		imagefile = 'hw/space/bg.jpg',
+		imagefile = 'bg.jpg',
+		--imagefile = 'hw/space/bg.jpg',
 	}
 	if love.filesystem.exists(emu.bg.imagefile) then
 		emu.bg.image = love.graphics.newImage(emu.bg.imagefile)
@@ -163,6 +163,7 @@ function love.load()
 	--vpet.hw = vpet:loadhardware('vpet_supertest.lua', vpet.hwdir)
 	--vpet.hw = vpet:loadhardware('vv8.lua', vpet.hwdir)
 	--vpet.hw, err = vpet:loadhardware('space.lua', vpet.hwdir)
+	--vpet.hw, err = vpet:loadhardware('bigpet.lua', vpet.hwdir)
 
 	if not vpet.hw then
 		print('Hardware failed to load with the following error:')
@@ -193,20 +194,27 @@ function love.load()
 	local appname
 	--appname = 'fonttest'
 	--appname = 'tictactoe'
-	appname = 'applist'
+	--appname = 'applist'
 	--appname = 'shooter'
+	--appname = 'watercaves'
 
-	vpet.appdir = 'rom/' -- FIXME:HAXXXX
+	--vpet.appdir, appname = 'hw/space/apps/', 'shooter'
+	vpet.appdir, appname = 'rom/', 'applist'
+
+	--vpet.appdir = 'rom/' -- FIXME:HAXXXX
 	--vpet.appdir = 'hw/space/apps/' -- FIXME:HAXXXX
 	vpet.cansub = true
-	api.subapp(appname, true)
+	local ok, err = api.subapp(appname, true)
+	if not ok then error(err) end
 	vpet.appdir = nil -- FIXME:HAXXXX
 end
 
 function love.update(dt)
+	local appstate = vpet.appstack:peek()
+	local app = appstate.app
 	vpet:updatemousecheap()
-	if vpet.app.update and type(vpet.app.update) == 'function' then
-		vpet.app:update(dt)
+	if app.update and type(app.update) == 'function' then
+		app:update(dt)
 	end
 end
 
@@ -281,8 +289,10 @@ function vpet:updatemouse()
 end
 
 function love.draw()
-	if vpet.app.draw and type(vpet.app.draw) == 'function' then
-		vpet.app:draw()
+	local appstate = vpet.appstack:peek()
+	local app = appstate.app
+	if app.draw and type(app.draw) == 'function' then
+		app:draw()
 	end
 
 	love.graphics.setColor(vpet.IMAGECOLOR)
@@ -428,13 +438,15 @@ function love.resize(w, h)
 end
 
 function vpet:setInput(button, pressed)
+	local appstate = vpet.appstack:peek()
+	local app = appstate.app
 	if self.input[button] ~= pressed then
 		self.input[button] = pressed
 		-- TODO: refactor this to be a check into a table of declared functions, maybe?
-		if vpet.app.event and type(vpet.app.event)=='function' then
-			vpet.app:event('button', {button = button, up = not pressed, down = pressed})
+		if app.event and type(app.event)=='function' then
+			app:event('button', {button = button, up = not pressed, down = pressed})
 		end
-		if button == 'home' then
+		if button == 'home' and pressed then
 			if #vpet.appstack > 0 then
 				api.quit()
 			end
@@ -533,7 +545,7 @@ function vpet:loadscript(script, env)
 	local ok, f = pcall(love.filesystem.load, script)
 	if not ok then
 		print('script '..script..' failed to load')
-		return false
+		return false, f
 	end
 	setfenv(f, env or self.env)
 	--print('script '..script..' loaded')
@@ -958,6 +970,7 @@ function api.subapp(appname, cansub)
 		local appstate ={
 			name = appname,
 			dir = appdir,
+			chunk = app,
 			vram = {
 				draw = {},
 			},
@@ -975,16 +988,20 @@ function api.subapp(appname, cansub)
 		draw.setDest(0, 'screen')
 		draw.setSrc(0, 'screen')
 		local ok
-		ok, appstate.app = pcall(app)
+		ok, appstate.app = pcall(appstate.chunk)
 		if not ok then print(appstate.app) error'app failed to load' end
-		if not appstate.vram[1] then
-			appstate.vram[1] = vpet:newpage()
+		if type(appstate.app) ~= 'table' then
+			vpet.appstack:pop(appstate)
+			return false, 'app returned ' .. type(appstate.app) .. ' instead of table'
+		else
+			if not appstate.vram[1] then
+				appstate.vram[1] = vpet:newpage()
+			end
+			draw.setSrc(1, 'app')
+		--if cansub then appstate.app.applist = vpet:listapps('apps/') end
+			vpet.cansub = cansub
+			return true
 		end
-		draw.setSrc(1, 'app')
-		vpet.app = vpet.appstack:peek().app -- FIXME: remove vpet.app or replace with metatable
-		if cansub then vpet.appstack:peek().app.applist = vpet:listapps('apps/') end
-		vpet.cansub = cansub
-		return true
 	else
 		return false, appdir
 	end
@@ -992,10 +1009,20 @@ end
 
 function api.quit()
 	if #vpet.appstack > 1 then
+		-- there's another app on the stack, so return to it
 		vpet.appstack:pop()
-		vpet.app = vpet.appstack:peek().app -- FIXME: remove vpet.app or replace with metatable
 		vpet.cansub = true
+	else
+		-- there's no more apps on the stack, so restart this one
+		local appstate = vpet.appstack:peek()
+		local ok
+		ok, appstate.app = pcall(appstate.chunk)
+		if not ok then error('woops, app couldn\'t reset??') end
 	end
+end
+
+function api.listapps()
+	if vpet.cansub then return vpet:listapps('apps/') else error() end
 end
 
 -- These are the new draw functions --------

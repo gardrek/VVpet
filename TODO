@@ -7,6 +7,7 @@ New features:
     - This way, accessing unavailable hardware/vram pages can be avoided
   - config file
   - Separate environment for each app, and an API for inter-app communication
+    - Right now apps all share the same global environment, and so do hardware. this could cause havoc if something sets a global variable and something else reads it 
   - individual hardware component scaling
 
 Improvements:

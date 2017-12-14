@@ -1,18 +1,12 @@
--- testing for pixelimage support
-
 -- hw description returns a table with at least the members output and input
 -- the format of the table is detailed below
 -- all x, y co-ordinates are measured with the origin at the CENTER of the device
 
---local success, hw = loadscript('hw/vpet_base.lua')
-
---if not success then print('no hw') return nil end
-
 local hw = inherithw(hwdir..'vpet_base.lua')
 
 hw.info = {
-	name = 'VV8',
-	version = {0, 0, 1},
+	name = 'bigPET',
+	version = {0, 0, 1}, -- version number, analogous to 0.0.1
 }
 
 local basedir = 'vpet64/'
@@ -26,18 +20,31 @@ local lcd = {
 	type = 'lcd',
 	x = 0,
 	y = -16,
-	w = 68,
-	h = 68,
+	w = 256 + 4,
+	h = 128 + 4,
 	bgcolor = {0xee, 0xee, 0xee},
 	vram = {
 	-- vram is basically a set of spritesheets called pages
 	-- page 0 is always initialized to a blank canvas, and is writable. other pages are read-only (for now)
-		w = 64,
-		h = 64,
-		font = basedir..'font.png',
+		w = 256,
+		h = 128,
+		font = 'vpet64/font.png',
 	},
 	backlight = {
 		color = {0x55, 0xaa, 0xff, 0x55},
+	},
+	-- Sub-units
+	{
+		-- the dotmatrix unit is a rectangular array of pixels on an lcd.
+		-- NOTE: the co-ordinates here are relative to the CENTER of the LCD screen
+		type = 'dotmatrix',
+		x = 0,
+		y = 0,
+		w = 256,
+		h = 128,
+		page = 0,
+		pagex = 0,
+		pagey = 0,
 	},
 }
 
@@ -78,29 +85,6 @@ for index, color in pairs(lcd.colors) do
 	end
 end
 
-table.insert(lcd, {
-	type = 'dotmatrix',
-	x = 0,
-	y = 0,
-	w = 64,
-	h = 64,
-	page = 0,
-	pagex = 0,
-	pagey = 0,
-	scale = 1,
-})
-
 table.insert(hw.output, lcd)
-
-for k,v in pairs(hw.input.buttons) do
-	if tonumber(k) then -- this is hacky, but I like it
-		v.image_up = basedir..'screen_button.png'
-		v.image_down = basedir..'screen_button_pressed.png'
-		--v.image_down = 'pika/pika.png'
-	else
-		v.image_up = basedir..k..'_button.png'
-		v.image_down = basedir..k..'_button_pressed.png'
-	end
-end
 
 return hw
