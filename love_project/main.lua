@@ -989,7 +989,11 @@ function api.subapp(appname, cansub)
 		draw.setSrc(0, 'screen')
 		local ok
 		ok, appstate.app = pcall(appstate.chunk)
-		if not ok then print(appstate.app) error'app failed to load' end
+		if not ok then
+			vpet.appstack:pop(appstate)
+			print('app failed to load')
+			return false, appstate.app
+		end
 		if type(appstate.app) ~= 'table' then
 			vpet.appstack:pop(appstate)
 			return false, 'app returned ' .. type(appstate.app) .. ' instead of table'
