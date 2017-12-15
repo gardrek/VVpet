@@ -1,5 +1,4 @@
 New features:
-  - LCD Ghosting
   - Touch and Android
   - some form of hardware selection
   - API for apps to enumerate hardware at run-time, and read info about it
@@ -9,6 +8,10 @@ New features:
   - Separate environment for each app, and an API for inter-app communication
     - Right now apps all share the same global environment, and so do hardware. this could cause havoc if something sets a global variable and something else reads it 
   - individual hardware component scaling
+  - LCD Overhaul
+    - Ghosting
+    - Image-Pixel improvement
+      - Individual unit scale is a requirement for Image-Pixel to make any sense
 
 Improvements:
   - mouse control needs improvement

@@ -38,7 +38,7 @@ function game:draw()
 			drawcursor = true
 			local color = drawcursor and i == cursor.index and 'Gray' or 'Blue'
 			draw.setColor(color, 'Blue')
-			draw.text(app.name or app.file, 1, i * 8 + 24 - scroll, nil, i == cursor.index)
+			draw.text(app.name or app.file, 1, i * 8 + 25 - scroll, nil, i == cursor.index)
 		end
 	end
 	draw.setColor('Gray')
@@ -68,7 +68,9 @@ end
 function game:update(dt)
 	cursor_blink = (cursor_blink + dt) % 1.0
 	drawcursor = cursor_blink < 0.5
+	--[[
 	scroll = lerp(scroll, cursor.index * 8, dt * 8)
+	--]]scroll = math.floor((cursor.index - 1) / 4) * 8 * 4 + 8 * 2.5
 	if self.status_scroll > -#self.status * 4 then
 		self.status_scroll = lerp(self.status_scroll, self.status_scroll - self.status_scroll_speed, dt * 8)
 	else

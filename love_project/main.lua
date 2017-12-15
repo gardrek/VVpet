@@ -159,9 +159,9 @@ function love.load()
 
 	local err
 	vpet.hw, err = vpet:loadhardware('vpet64.lua', vpet.hwdir)
-	--vpet.hw = vpet:loadhardware('vpet48.lua', vpet.hwdir)
-	--vpet.hw = vpet:loadhardware('vpet_supertest.lua', vpet.hwdir)
-	--vpet.hw = vpet:loadhardware('vv8.lua', vpet.hwdir)
+	--vpet.hw, err = vpet:loadhardware('vpet48.lua', vpet.hwdir)
+	--vpet.hw, err = vpet:loadhardware('vpet_supertest.lua', vpet.hwdir)
+	--vpet.hw, err = vpet:loadhardware('vv8.lua', vpet.hwdir)
 	--vpet.hw, err = vpet:loadhardware('space.lua', vpet.hwdir)
 	--vpet.hw, err = vpet:loadhardware('bigpet.lua', vpet.hwdir)
 
@@ -209,12 +209,42 @@ function love.load()
 	vpet.appdir = nil -- FIXME:HAXXXX
 end
 
+GLOBALghostingLevel = 0x66
+
 function love.update(dt)
 	local appstate = vpet.appstack:peek()
 	local app = appstate.app
 	vpet:updatemousecheap()
 	if app.update and type(app.update) == 'function' then
 		app:update(dt)
+	end
+	--[[
+	Clear SF to alpha
+	Draw D to SF normally
+	Draw SB to SF normally
+	Draw D to SB translucently
+	Draw SF to screen normally
+	]]
+	-- Simulate LCD ghosting. TODO: move this into update and account for delta-time
+	if vpet.hw.output then
+		for index, unit in ipairs(vpet.hw.output) do
+			if unit.type == 'lcd' then
+				unit.frametime = unit.frametime + dt
+				if unit.frametime >= 0.016 then
+					unit.frametime = unit.frametime % 0.016
+					love.graphics.setColor(vpet.IMAGECOLOR)
+					unit.shadowCanvasFront:renderTo(function()
+						love.graphics.clear({0, 0, 0, 0})
+						love.graphics.draw(unit.screenCanvas)
+						love.graphics.draw(unit.shadowCanvasBack)
+					end)
+					unit.shadowCanvasBack:renderTo(function()
+						love.graphics.setColor({0xff, 0xff, 0xff, unit.ghostingLevel or GLOBALghostingLevel})
+						love.graphics.draw(unit.screenCanvas)
+					end)
+				end
+			end
+		end
 	end
 end
 
@@ -304,7 +334,7 @@ function love.draw()
 		0, emu.bg.scale
 	)
 
-	-- base console
+	---[[ base console
 	if vpet.hw.base.image then
 		love.graphics.draw(
 			vpet.hw.base.image,
@@ -313,6 +343,7 @@ function love.draw()
 			0, emu.scale
 		)
 	end
+	--]]
 
 	-- draw buttons
 	if vpet.hw.input and vpet.hw.input.buttons then
@@ -346,6 +377,7 @@ function love.draw()
 				end
 			elseif unit.type == 'lcd' then
 				if unit.bgcolor then
+					--[[
 					love.graphics.setColor(unit.bgcolor)
 					love.graphics.rectangle(
 						'fill',
@@ -353,43 +385,56 @@ function love.draw()
 						emu.center.y + (unit.y - unit.h / 2) * emu.scale,
 						unit.w * emu.scale, unit.h * emu.scale
 					)
+					--]]
 				end
 				love.graphics.setColor(vpet.IMAGECOLOR)
-				for subindex, subunit in ipairs(unit) do
-					if subunit.type == 'dotmatrix' then
-						love.graphics.draw(
-							unit.vram[subunit.page],
-							subunit.quad,
-							emu.center.x + (unit.x + subunit.x - subunit.w / 2) * emu.scale,
-							emu.center.y + (unit.y + subunit.y - subunit.h / 2) * emu.scale,
-							0, emu.scale
-						)
-					elseif subunit.type == 'pixelimage' and subunit.quads then
-						local pixel = 0
-						local imagedata = unit.vram[0]:newImageData()
-						for qi, quad in ipairs(subunit.quads) do
-							pixel = vpet:closest_color_index(unit.colors, imagedata:getPixel(qi, 0))
-							subunit.quad:setViewport(quad.x, quad.y + pixel * subunit.offset, quad.w, quad.h)
+				unit.screenCanvas:renderTo(function()
+					for subindex, subunit in ipairs(unit) do
+						if subunit.type == 'dotmatrix' then
 							love.graphics.draw(
-								subunit.atlas,
+								unit.vram[subunit.page],
 								subunit.quad,
-								emu.center.x + (unit.x + subunit.x + quad.x - unit.w / 2) * emu.scale,
-								emu.center.y + (unit.y + subunit.y + quad.y - unit.h / 2) * emu.scale,
-								0, emu.scale
+								unit.w / 2 + subunit.x - subunit.w / 2,
+								unit.h / 2 + subunit.y - subunit.h / 2,
+								0, 1
 							)
+						elseif subunit.type == 'pixelimage' and subunit.quads then
+							local pixel = 0
+							local imagedata = unit.vram[0]:newImageData()
+							for qi, quad in ipairs(subunit.quads) do
+								pixel = vpet:closest_color_index(unit.colors, imagedata:getPixel(qi, 0))
+								subunit.quad:setViewport(quad.x, quad.y + pixel * subunit.offset, quad.w, quad.h)
+								love.graphics.draw(
+									subunit.atlas,
+									subunit.quad,
+									unit.w / 2 + subunit.x + quad.x - unit.w / 2,
+									unit.h / 2 + subunit.y + quad.y - unit.h / 2,
+									0, 1
+								)
+							end
 						end
 					end
-				end
+				end)
+				love.graphics.setColor(vpet.IMAGECOLOR)
+				love.graphics.draw(
+					unit.shadowCanvasFront,
+					emu.center.x + (unit.x - unit.w / 2) * emu.scale,
+					emu.center.y + (unit.y - unit.h / 2) * emu.scale,
+					0, emu.scale
+				)
 			end
 		end
 	end
 
 	if vpet.DEBUG then
-		love.graphics.draw(
-			vpet.hw.output.defaultlcd.vram[0],
-			0, 0,
-			0, emu.scale
-		)
+		if vpet.hw and vpet.hw.output and vpet.hw.output.defaultlcd then
+			love.graphics.setColor(vpet.IMAGECOLOR)
+			love.graphics.draw(
+				vpet.hw.output.defaultlcd.vram[0],
+				0, 0,
+				0, emu.scale
+			)
+		end
 		local x, y, w, h, index
 		h = love.graphics.getHeight() / 20
 		w = h
@@ -413,6 +458,14 @@ function love.keypressed(key, scancode, isrepeat)
 			emu:setcozy(emu.cozy + 1)
 		elseif key == '=' then
 			emu:setcozy(emu.cozy - 1)
+		elseif key == '9' then
+			GLOBALghostingLevel = GLOBALghostingLevel - 0x11
+		elseif key == '0' then
+			GLOBALghostingLevel = GLOBALghostingLevel + 0x11
+		elseif key == '7' then
+			GLOBALghostingLevel = GLOBALghostingLevel - 0x1
+		elseif key == '8' then
+			GLOBALghostingLevel = GLOBALghostingLevel + 0x1
 		end
 		if vpet.inputreversemap[key] then
 			vpet:setInput(vpet.inputreversemap[key], true)
@@ -501,6 +554,11 @@ function vpet:newpage(image, lcd)
 		end
 	end)
 	return page
+end
+
+function applyfade(x, y, r, g, b, a)--==========================FIXME: remove if not needed
+	
+	return r, g, b, a
 end
 
 function vpet:loadforvram(image, lcd)
@@ -829,16 +887,22 @@ function vpet:loadhardware(file, dir)
 					unit.vram.font = love.graphics.newCanvas(unit.vram.w, unit.vram.h)
 					if type(o.vram.font) == 'string' and love.filesystem.exists(dir..o.vram.font) then
 						local image = love.graphics.newImage(dir..o.vram.font)
-						local oldc = {love.graphics.getColor()}
 						love.graphics.setColor(vpet.IMAGECOLOR)
 						unit.vram.font:renderTo(function()
 							love.graphics.draw(image)
 						end)
-						love.graphics.setColor(oldc)
 					else
 						print(id..' font was not loaded')
 						hw_warnings = hw_warnings + 1
 					end
+					unit.screenCanvas = love.graphics.newCanvas(unit.w, unit.h)
+					unit.shadowCanvasFront = love.graphics.newCanvas(unit.w, unit.h)
+					unit.shadowCanvasBack = love.graphics.newCanvas(unit.w, unit.h)
+					unit.shadowCanvasBack:renderTo(function()
+						love.graphics.setColor(unit.bgcolor)
+						love.graphics.rectangle('fill', 0, 0, unit.w, unit.h)
+					end)
+					unit.frametime = 0
 					-- TODO: Handle backlight here
 					local subunit
 					for i3, hw_subunit in ipairs(o) do
@@ -1001,7 +1065,9 @@ function api.subapp(appname, cansub)
 			if not appstate.vram[1] then
 				appstate.vram[1] = vpet:newpage()
 			end
+			draw.setSrc(0, 'screen')
 			draw.setSrc(1, 'app')
+			draw.setColor(1, 0)
 		--if cansub then appstate.app.applist = vpet:listapps('apps/') end
 			vpet.cansub = cansub
 			return true
@@ -1111,6 +1177,7 @@ function draw.cls(color)
 end
 
 function draw.rect(x, y, w, h)
+	draw.setColor()
 	local appstate = vpet.appstack:peek()
 	if type(x) == 'table' then
 		local rect = x
@@ -1130,6 +1197,7 @@ function draw.rect(x, y, w, h)
 end
 
 function draw.pix(x, y)
+	draw.setColor()
 	x = math.floor(x)
 	y = math.floor(y)
 	vpet.appstack:peek().dest:renderTo(function()
@@ -1187,6 +1255,7 @@ function draw.text(str, x, y, align, rect)
 end
 
 function draw.line(x0, y0, x1, y1)
+	draw.setColor()
 	x0 = math.floor(x0)
 	x1 = math.floor(x1)
 	y0 = math.floor(y0)

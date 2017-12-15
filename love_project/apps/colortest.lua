@@ -13,6 +13,14 @@ local colors = {
 	'Grey',
 	'Orange',
 	'Pink',
+	0,
+	1,
+	--[[
+	2,
+	3,
+	4,
+	5,
+	--]]
 }
 
 local bgc
@@ -22,7 +30,12 @@ function game:draw()
 	draw.setColor(nil, bgc)
 	draw.cls()
 	for i, v in ipairs(colors) do
-		draw.setColor(bgc, v)
+		--draw.setColor(bgc, v)
+		if vpet.btn['1'] then
+			draw.setColor(bgc, v)
+		else
+			draw.setColor(v, bgc)
+		end
 		draw.text(v, math.floor((i - 1) / 8) * 32 + 1, ((i - 1) % 8) * 8, nil, true)
 	end
 end
