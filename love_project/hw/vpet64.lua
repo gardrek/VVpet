@@ -27,6 +27,7 @@ local lcd = {
 		[0] = {0xdd, 0xee, 0xcc}, -- white (paper)
 		[1] = {0x11, 0x11, 0x22}, -- black (ink)
 	},
+	ghosting = 0x77,
 	vram = {
 	-- vram is basically a set of spritesheets called pages
 	-- page 0 is always initialized to a blank canvas, and is writable. other pages are read-only (for now)

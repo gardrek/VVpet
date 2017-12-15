@@ -9,7 +9,7 @@ New features:
     - Right now apps all share the same global environment, and so do hardware. this could cause havoc if something sets a global variable and something else reads it 
   - individual hardware component scaling
   - LCD Overhaul
-    - Ghosting
+    √ Ghosting
     - Image-Pixel improvement
       - Individual unit scale is a requirement for Image-Pixel to make any sense
 

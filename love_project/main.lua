@@ -4,6 +4,8 @@ local api = {}
 local mouse = {}
 local draw = {}
 
+GLOBALghostingLevel = 0x77
+
 function love.load()
 	-- Love set-up stuff
 	io.stdout:setvbuf('no') -- enable normal use of the print() command
@@ -209,8 +211,6 @@ function love.load()
 	vpet.appdir = nil -- FIXME:HAXXXX
 end
 
-GLOBALghostingLevel = 0x66
-
 function love.update(dt)
 	local appstate = vpet.appstack:peek()
 	local app = appstate.app
@@ -239,7 +239,7 @@ function love.update(dt)
 						love.graphics.draw(unit.shadowCanvasBack)
 					end)
 					unit.shadowCanvasBack:renderTo(function()
-						love.graphics.setColor({0xff, 0xff, 0xff, unit.ghostingLevel or GLOBALghostingLevel})
+						if unit.ghosting then love.graphics.setColor({0xff, 0xff, 0xff, unit.ghosting or GLOBALghostingLevel}) end
 						love.graphics.draw(unit.screenCanvas)
 					end)
 				end
@@ -895,6 +895,7 @@ function vpet:loadhardware(file, dir)
 						print(id..' font was not loaded')
 						hw_warnings = hw_warnings + 1
 					end
+					unit.ghosting = o.ghosting
 					unit.screenCanvas = love.graphics.newCanvas(unit.w, unit.h)
 					unit.shadowCanvasFront = love.graphics.newCanvas(unit.w, unit.h)
 					unit.shadowCanvasBack = love.graphics.newCanvas(unit.w, unit.h)

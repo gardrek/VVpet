@@ -285,6 +285,7 @@ do
 	-- Water for the water falls~
 	map:set(31, 1, TILE.WATER)
 	map:set(0, 1, TILE.WATER)
+	map:set(1, 4, tile)
 end
 
 
@@ -459,8 +460,8 @@ function game:update(dt)
 	map:set(31, 1, TILE.WATER)
 	map:set(0, 1, TILE.WATER)
 
-	map.x = lerp(map.x, 28 - (p1.x + p1.dx * 16), dt * 4)
-	map.y = lerp(map.y, 28 - (p1.y + p1.dy * 16), dt * 8)
+	--map.x = lerp(map.x, 28 - (p1.x + p1.dx * 16), dt * 4)
+	--map.y = lerp(map.y, 28 - (p1.y + p1.dy * 16), dt * 8)
 
 	frametime = frametime + dt
 end

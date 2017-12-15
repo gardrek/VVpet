@@ -1,5 +1,7 @@
 # VVpet
 
+![Animated image of VVpet running](https://i.imgur.com/vhCwHG2.gifv)
+
 ## Interface
 VVpet is an emulator for virtual pets that never existed. VVpet is not precisely a fantasy console, but rather a set of related fantasy consoles and tools to create your own. The vPET series of consoles includes flagship vPET64, the main which the others are essentially variations of.
 
