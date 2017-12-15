@@ -166,7 +166,7 @@ function love.load()
 	--vpet.hw, err = vpet:loadhardware('vv8.lua', vpet.hwdir)
 	--vpet.hw, err = vpet:loadhardware('space.lua', vpet.hwdir)
 	--vpet.hw, err = vpet:loadhardware('bigpet.lua', vpet.hwdir)
-	vpet.hw, err = vpet:loadhardware('vvboy.lua', vpet.hwdir)
+	--vpet.hw, err = vpet:loadhardware('vvboy.lua', vpet.hwdir)
 
 	if not vpet.hw then
 		print('Hardware failed to load with the following error:')
