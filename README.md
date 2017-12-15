@@ -3,7 +3,7 @@
 ![Animated image of VVpet running](https://i.imgur.com/vhCwHG2.gif)
 
 ## Interface
-VVpet is an emulator for virtual pets that never existed. VVpet is not precisely a fantasy console, but rather a set of related fantasy consoles and tools to create your own. The vPET series of consoles includes flagship vPET64, the main which the others are essentially variations of.
+VVpet is an emulator for virtual pets that never existed. VVpet is not precisely a fantasy console, but rather a set of related fantasy consoles and tools to create your own. The vPET series of virtual consoles includes flagship vPET64, the main console which the others are each a variation of.
 
 Consoles in the vPET series have the following buttons, which are mapped to keys on the keyboard:
 
@@ -14,6 +14,13 @@ Consoles in the vPET series have the following buttons, which are mapped to keys
 | Back Button | Backspace
 | Home Button | Escape
 
+The following additional buttons are also mapped:
+
+| vPET | Emulator Key |
+|-|-
+| a | control, v, n
+| b | shift, b
+
 ## Files
 Your application should have a unique name, and the location of the main script should be one of the following:
 
@@ -23,7 +30,7 @@ Your application should have a unique name, and the location of the main script 
 
 `$NAME/app.lua`
 
-Any pages must be in the same folder as the main script.
+Any pages must be in the same folder as the main script. In order for your app to show up in the app list, it shoudl be in the `apps/` folder.
 
 ## Callbacks
 
