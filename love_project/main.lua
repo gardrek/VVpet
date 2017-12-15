@@ -166,7 +166,7 @@ function love.load()
 	--vpet.hw, err = vpet:loadhardware('vv8.lua', vpet.hwdir)
 	--vpet.hw, err = vpet:loadhardware('space.lua', vpet.hwdir)
 	--vpet.hw, err = vpet:loadhardware('bigpet.lua', vpet.hwdir)
-	--vpet.hw, err = vpet:loadhardware('vvboy.lua', vpet.hwdir)
+	vpet.hw, err = vpet:loadhardware('vvboy.lua', vpet.hwdir)
 
 	if not vpet.hw then
 		print('Hardware failed to load with the following error:')
@@ -1108,8 +1108,8 @@ function draw.setColor(color, bgcolor)
 end
 
 function draw.getColor()
-	local appstate = vpet.appstack:peek()
-	return appstate.vram.draw.color, appstate.vram.draw.bgcolor
+	local drawstate = vpet.appstack:peek().vram.draw
+	return drawstate.color, drawstate.bgcolor
 end
 
 function draw.setDest(page, hw)

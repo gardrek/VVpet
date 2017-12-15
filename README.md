@@ -134,6 +134,10 @@ TODO: explain this more
 Draws string `str` at co-ordinates `x, y`. `align` is a number representing alignment, 1 for right-aligned (default), 0 for centered, -1 for left-aligned. If rect is true, a rectangle will be drawn behind the text, using the background color. If rect is false, no rectangle will be drawn. If rect is a color, that color will be used for the rectangle.
 
 ---
+`draw.line(x0, y0, x1, y1)`
+Draws a line from point `x0, y0` to point `x1, y1`.
+
+---
 `vpet.led(on)`
 
 If `on` is given, turns the LED on for true and off for false. Either way, returns whether the LED is on.

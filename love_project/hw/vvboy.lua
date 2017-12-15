@@ -10,7 +10,7 @@
 
 local basedir = 'vpet64/'
 
-local gbdir = 'vpet64/'
+local vvboydir = 'vvboy/'
 
 local main_screen = {
 	w = 160,
@@ -22,7 +22,7 @@ local hw = {
 	base = {
 		-- base specifies the background image of the device, and the default dimensions of the device
 		-- minw and minh are the minimum height and width around the origin that must be shown
-		image = gbdir .. 'base.png',
+		image = vvboydir .. 'base.png',
 		x = -64,
 		y = -32,
 		h = 256,
@@ -37,8 +37,8 @@ local hw = {
 		{
 			-- the led unit is a simple light that can be on or off
 			type = 'led',
-			x = -96,
-			y = 0,
+			x = -44,
+			y = 26 + 32,
 			w = 4,
 			h = 4,
 			image_on = basedir..'led_on.png',
