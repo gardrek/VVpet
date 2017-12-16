@@ -71,7 +71,10 @@ These are also subject to change.
 
 Warning: This API is in early development, and is subject to change without warning. One change that will likely come is packaging it into a table, but that will be after some major reform.
 
-Besides the functions below, there is also a read-only `btn` table, giving a boolean for whether each button is pressed.
+---
+`vpet.btn(button)`
+
+Returns a boolean representing whether the given button is held, or nil if the button does not exist.
 
 ---
 `vpet.loadpage(file, page, lcd)`

@@ -12,6 +12,8 @@ local basedir = 'vpet64/'
 
 local spacedir = 'space/'
 
+local offset = -12
+
 local hw = {
 	-- available categories include: info, base, output, input
 	base = {
@@ -19,7 +21,7 @@ local hw = {
 		-- minw and minh are the minimum height and width around the origin that must be shown
 		image = spacedir .. 'base.png',
 		x = -96,
-		y = -96,
+		y = -96 + offset,
 		h = 192,
 		w = 192,
 		minw = 152,
@@ -119,7 +121,7 @@ local lcd = {
 	-- pixelimage is for non-square pixels like on seven-segment displays Game and Watch
 	type = 'lcd',
 	x = 0,
-	y = 6,
+	y = 6 + offset,
 	w = 64 + 4,
 	h = 128 + 4,
 	bgcolor = {0x00, 0x11, 0x11},
@@ -180,8 +182,9 @@ table.insert(lcd, {
 
 table.insert(hw.output, lcd)
 
---[[
-for k,v in pairs(hw.input.buttons) do
+for k, v in pairs(hw.input.buttons) do
+	v.y = v.y + offset
+	--[[
 	if tonumber(k) then -- this is hacky, but I like it
 		v.image_up = basedir..'screen_button.png'
 		v.image_down = basedir..'screen_button_pressed.png'
@@ -190,7 +193,7 @@ for k,v in pairs(hw.input.buttons) do
 		v.image_up = basedir..k..'_button.png'
 		v.image_down = basedir..k..'_button_pressed.png'
 	end
+	--]]
 end
---]]
 
 return hw

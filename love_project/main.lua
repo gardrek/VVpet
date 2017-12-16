@@ -1,16 +1,22 @@
 local emu = {}
-local vpet = {}
-local api = {}
 local mouse = {}
-local draw = {}
 
-GLOBALghostingLevel = 0x77
+local vpet = {}
+vpet.const = {}
+vpet.const.ghosting = 0x77
+vpet.const.imageColor = {0xff, 0xff, 0xff, 0xff}
+
+local api = {}
+api.vpet = {}
+api.draw = {}
+api.hw = {}
+
+local hw = {}
 
 function love.load()
 	-- Love set-up stuff
 	io.stdout:setvbuf('no') -- enable normal use of the print() command
 	love.graphics.setDefaultFilter('nearest', 'nearest', 0) -- Pixel scaling
-	vpet.IMAGECOLOR = {0xff, 0xff, 0xff, 0xff}
 
 	mouse.last_x, mouse.last_y = love.mouse.getPosition()
 	mouse.x, mouse.y = love.mouse.getPosition()
@@ -22,8 +28,8 @@ function love.load()
 		x = 0,
 		y = 0,
 		imagefile = 'bg.jpg',
-		--imagefile = 'hw/space/bg.jpg',
 	}
+
 	if love.filesystem.exists(emu.bg.imagefile) then
 		emu.bg.image = love.graphics.newImage(emu.bg.imagefile)
 	else
@@ -32,7 +38,9 @@ function love.load()
 			love.graphics.clear(0x33, 0x33, 0x33)
 		end)
 		emu.bg.image = love.graphics.newImage(img:newImageData())
+		print('Background image ' .. emu.bg.imagefile .. ' not found.')
 	end
+
 	function emu:setcozy(newcozy)
 		if newcozy then
 			self.cozy = newcozy
@@ -48,6 +56,8 @@ function love.load()
 		end
 		self.scale = math.max(scale - self.cozy, 1)
 	end
+
+	-- Load the input. TODO: This should probably be in emu, and of course be loaded from a config file
 
 	vpet.inputmap = {
 		-- system buttons - these buttons are handled differently when an app is run from inside another app
@@ -84,10 +94,10 @@ function love.load()
 	end
 
 	-- set up sandbox environments
-	--vpet.osenv = {} -- The OS would conceivably need access to a different environment
-	vpet.env = {} -- this is used when loading apps
-	vpet.hwenv = {} -- this is used when loading hardware
-	local env_globals = {
+
+	hw.hwdir = 'hw/'
+
+	vpet.global_names = {
 		-- Functions and variables
 		--'garbagecollect', 'dofile', '_G', 'getfenv', 'load', 'loadfile',
 		--'loadstring', 'setfenv', 'rawequal', 'rawget', 'rawset',
@@ -98,38 +108,6 @@ function love.load()
 		-- Libraries
 		'math', 'table', 'string'
 	}
-	for i, v in ipairs(env_globals) do
-		vpet.env[v] = _G[v]
-		vpet.hwenv[v] = _G[v]
-	end
-	vpet.env.vpet = {}
-	for k, v in pairs(api) do
-		vpet.env.vpet[k] = v
-	end
-	vpet.env.draw = {}
-	for k, v in pairs(draw) do
-		vpet.env.draw[k] = v
-	end
-	vpet.env._G = vpet.env
-	vpet.hwenv._G = vpet.hwenv
-
-	vpet.hwenv.inherithw = function(script)
-		local f = vpet:loadscript(script, vpet.hwenv)
-		if not f then
-			error('Hardware file' .. script .. ' could not be loaded')
-		end
-		local hw = f()
-		if type(hw) ~= 'table' then
-			error('Hardware file' .. script .. ' did not return table')
-		end
-		return hw
-	end
-
-	-- hardware uses these variables to load _other_ hardware
-	vpet.hwenv.dofile = _G.dofile
-	vpet.hwenv.hwdir = 'hw/'
-
-	vpet.env.vpet.btn = vpet:readonlytable(vpet.input) -- This way, apps can't spoof the table
 
 	-- Fallback colors, for finding the closest color to common color names
 	vpet.fallbackcolors = {
@@ -161,12 +139,12 @@ function love.load()
 
 	local err
 	vpet.hw, err = vpet:loadhardware('vpet64.lua', vpet.hwdir)
-	--vpet.hw, err = vpet:loadhardware('vpet48.lua', vpet.hwdir)
-	--vpet.hw, err = vpet:loadhardware('vpet_supertest.lua', vpet.hwdir)
-	--vpet.hw, err = vpet:loadhardware('vv8.lua', vpet.hwdir)
-	--vpet.hw, err = vpet:loadhardware('space.lua', vpet.hwdir)
-	--vpet.hw, err = vpet:loadhardware('bigpet.lua', vpet.hwdir)
-	--vpet.hw, err = vpet:loadhardware('vvboy.lua', vpet.hwdir)
+	vpet.hw, err = vpet:loadhardware('vpet48.lua', vpet.hwdir)
+	vpet.hw, err = vpet:loadhardware('vpet_supertest.lua', vpet.hwdir)
+	vpet.hw, err = vpet:loadhardware('vv8.lua', vpet.hwdir)
+	vpet.hw, err = vpet:loadhardware('space.lua', vpet.hwdir)
+	vpet.hw, err = vpet:loadhardware('bigpet.lua', vpet.hwdir)
+	vpet.hw, err = vpet:loadhardware('vvboy.lua', vpet.hwdir)
 
 	if not vpet.hw then
 		print('Hardware failed to load with the following error:')
@@ -207,7 +185,7 @@ function love.load()
 	--vpet.appdir = 'rom/' -- FIXME:HAXXXX
 	--vpet.appdir = 'hw/space/apps/' -- FIXME:HAXXXX
 	vpet.cansub = true
-	local ok, err = api.subapp(appname, true)
+	local ok, err = api.vpet.subapp(appname, true)
 	if not ok then error(err) end
 	vpet.appdir = nil -- FIXME:HAXXXX
 end
@@ -233,14 +211,14 @@ function love.update(dt)
 				unit.frametime = unit.frametime + dt
 				if unit.frametime >= 0.016 then
 					unit.frametime = unit.frametime % 0.016
-					love.graphics.setColor(vpet.IMAGECOLOR)
+					love.graphics.setColor(vpet.const.imageColor)
 					unit.shadowCanvasFront:renderTo(function()
 						love.graphics.clear({0, 0, 0, 0})
 						love.graphics.draw(unit.screenCanvas)
 						love.graphics.draw(unit.shadowCanvasBack)
 					end)
 					unit.shadowCanvasBack:renderTo(function()
-						if unit.ghosting then love.graphics.setColor({0xff, 0xff, 0xff, unit.ghosting or GLOBALghostingLevel}) end
+						if unit.ghosting then love.graphics.setColor({0xff, 0xff, 0xff, unit.ghosting or vpet.const.ghosting}) end
 						love.graphics.draw(unit.screenCanvas)
 					end)
 				end
@@ -326,7 +304,7 @@ function love.draw()
 		app:draw()
 	end
 
-	love.graphics.setColor(vpet.IMAGECOLOR)
+	love.graphics.setColor(vpet.const.imageColor)
 
 	-- scenery background image
 	love.graphics.draw(
@@ -368,7 +346,7 @@ function love.draw()
 			if unit.type == 'led' then
 				image = unit.on and unit.image_on or unit.image_off
 				if image then
-					love.graphics.setColor(vpet.IMAGECOLOR)
+					love.graphics.setColor(vpet.const.imageColor)
 					love.graphics.draw(
 						image,
 						emu.center.x + (unit.x - unit.w / 2) * emu.scale,
@@ -388,7 +366,7 @@ function love.draw()
 					)
 					--]]
 				end
-				love.graphics.setColor(vpet.IMAGECOLOR)
+				love.graphics.setColor(vpet.const.imageColor)
 				unit.screenCanvas:renderTo(function()
 					for subindex, subunit in ipairs(unit) do
 						if subunit.type == 'dotmatrix' then
@@ -416,7 +394,7 @@ function love.draw()
 						end
 					end
 				end)
-				love.graphics.setColor(vpet.IMAGECOLOR)
+				love.graphics.setColor(vpet.const.imageColor)
 				love.graphics.draw(
 					unit.shadowCanvasFront,
 					emu.center.x + (unit.x - unit.w / 2) * emu.scale,
@@ -429,7 +407,7 @@ function love.draw()
 
 	if vpet.DEBUG then
 		if vpet.hw and vpet.hw.output and vpet.hw.output.defaultlcd then
-			love.graphics.setColor(vpet.IMAGECOLOR)
+			love.graphics.setColor(vpet.const.imageColor)
 			love.graphics.draw(
 				vpet.hw.output.defaultlcd.vram[0],
 				0, 0,
@@ -460,13 +438,13 @@ function love.keypressed(key, scancode, isrepeat)
 		elseif key == '=' then
 			emu:setcozy(emu.cozy - 1)
 		elseif key == '9' then
-			GLOBALghostingLevel = GLOBALghostingLevel - 0x11
+			vpet.const.ghosting = vpet.const.ghosting - 0x11
 		elseif key == '0' then
-			GLOBALghostingLevel = GLOBALghostingLevel + 0x11
+			vpet.const.ghosting = vpet.const.ghosting + 0x11
 		elseif key == '7' then
-			GLOBALghostingLevel = GLOBALghostingLevel - 0x1
+			vpet.const.ghosting = vpet.const.ghosting - 0x1
 		elseif key == '8' then
-			GLOBALghostingLevel = GLOBALghostingLevel + 0x1
+			vpet.const.ghosting = vpet.const.ghosting + 0x1
 		end
 		if vpet.inputreversemap[key] then
 			vpet:setInput(vpet.inputreversemap[key], true)
@@ -502,7 +480,7 @@ function vpet:setInput(button, pressed)
 		end
 		if button == 'home' and pressed then
 			if #vpet.appstack > 0 then
-				api.quit()
+				api.vpet.quit()
 			end
 		end
 	end
@@ -528,7 +506,7 @@ function vpet:closest_color_index(colors, r, g, b, a)
 	return color
 end
 
-function vpet:readonlytable(table)
+function vpet:readonlytable(table) -- FIXME: this should be removed. The only use is in the table btn, which should be replaced with a function
 	return setmetatable({}, {
 		__index = table,
 		__newindex =
@@ -539,6 +517,56 @@ function vpet:readonlytable(table)
 	})
 end
 
+function vpet:newEnv(api_tables, global_names)
+	local env = {}
+	local g, t
+
+	global_names = global_names or vpet.global_names
+
+	for i, name in ipairs(global_names) do
+		g = _G[name]
+		t = type(g)
+		if g == nil then
+			print('Warning: attempted to add nil ' .. tostring(name) .. ' to environment')
+		elseif t == 'string' or t == 'number' or t == 'function' or t == 'boolean' then
+			env[name] = _G[name]
+		elseif t == 'table' then
+			env[name] = {}
+			for funcname, func in pairs(g) do
+				if type(func) == 'table' or type(func) == 'userdata' or type(func) == 'thread' then
+					print('Warning: ' .. type(func) .. ' ' .. tostring(funcname) .. ' in library ' .. tostring(name) .. '. not added.')
+				else
+					env[name][funcname] = func
+				end
+			end
+		else
+			print('Warning: attempted to add ' .. t .. ' ' .. name .. ' to environment')
+		end
+	end
+
+	for apiname, subapi in pairs(api_tables) do
+		t = type(subapi)
+		if t == 'nil' then
+			print('Warning: attempted to add nil ' .. tostring(apiname) .. ' to environment')
+		elseif t == 'string' or t == 'number' or t == 'function' or t == 'boolean' then
+			env[apiname] = subapi
+		elseif type(subapi) == 'table' then
+			env[apiname] = {}
+			for funcname, func in pairs(subapi) do
+				if type(func) == 'table' or type(func) == 'userdata' or type(func) == 'thread' then
+					print('Warning: ' .. type(func) .. ' ' .. tostring(funcname) .. ' in api ' .. tostring(apiname) .. '. not added.')
+				else
+					env[apiname][funcname] = func
+				end
+			end
+		end
+	end
+
+	env._G = env
+
+	return env
+end
+
 function vpet:newpage(image, lcd)
 	lcd = lcd or self.hw.output.defaultlcd
 	local page = love.graphics.newCanvas(lcd.vram.w, lcd.vram.h)
@@ -547,7 +575,7 @@ function vpet:newpage(image, lcd)
 	end
 	page:renderTo(function()
 		if image then
-			love.graphics.setColor(vpet.IMAGECOLOR)
+			love.graphics.setColor(vpet.const.imageColor)
 			love.graphics.draw(image)
 		else
 			love.graphics.setColor(lcd:getColorRGB(0))
@@ -555,11 +583,6 @@ function vpet:newpage(image, lcd)
 		end
 	end)
 	return page
-end
-
-function applyfade(x, y, r, g, b, a)--==========================FIXME: remove if not needed
-	
-	return r, g, b, a
 end
 
 function vpet:loadforvram(image, lcd)
@@ -606,7 +629,7 @@ function vpet:loadscript(script, env)
 		print('script '..script..' failed to load')
 		return false, f
 	end
-	setfenv(f, env or self.env)
+	setfenv(f, env or self:newEnv(api))
 	--print('script '..script..' loaded')
 	return f
 end
@@ -695,9 +718,9 @@ function vpet:listapps(dir)
 end
 
 function vpet:loadhardware(file, dir)
-	dir = dir or self.hwenv.hwdir
+	dir = dir or hw.hwdir
 
-	local success, hw = pcall(vpet:loadscript(dir..file, self.hwenv))
+	local success, hw = pcall(vpet:loadscript(dir..file, self:newEnv(hw)))
 
 	local loaded = {}
 	--loaded.dir = dir
@@ -801,6 +824,7 @@ function vpet:loadhardware(file, dir)
 	if hw.base then
 		loaded.base = {}
 		loaded.base.scale = hw.base.scale or 1
+
 		local malformed = false
 		for i, v in ipairs{'x', 'y', 'w', 'h', 'minw', 'minh'} do
 			if hw.base[v] then
@@ -816,6 +840,15 @@ function vpet:loadhardware(file, dir)
 		loaded.base.h = loaded.base.h or loaded.base.w or 64
 		loaded.base.minw = loaded.base.minw or loaded.base.w
 		loaded.base.minh = loaded.base.minh or loaded.base.h
+
+		local w, h, flags = love.window.getMode()
+		if flags.minwidth ~= loaded.base.minw or flags.minheight ~= loaded.base.minh then
+			flags.minwidth = loaded.base.minw
+			flags.minheight = loaded.base.minh
+			love.window.setMode(w, h, flags)
+		end
+		w, h, flags = nil, nil, nil
+
 		file = dir..hw.base.image
 		if love.filesystem.exists(file) then
 			loaded.base.image = love.graphics.newImage(file)
@@ -888,7 +921,7 @@ function vpet:loadhardware(file, dir)
 					unit.vram.font = love.graphics.newCanvas(unit.vram.w, unit.vram.h)
 					if type(o.vram.font) == 'string' and love.filesystem.exists(dir..o.vram.font) then
 						local image = love.graphics.newImage(dir..o.vram.font)
-						love.graphics.setColor(vpet.IMAGECOLOR)
+						love.graphics.setColor(vpet.const.imageColor)
 						unit.vram.font:renderTo(function()
 							love.graphics.draw(image)
 						end)
@@ -1001,11 +1034,29 @@ function select_vram_page(page, lcd)
 	return page, lcd
 end
 
+-- These functions are used within hardware description files
+
+function hw.inherithw(script)
+	local f = vpet:loadscript(script, vpet:newEnv(hw))
+	if not f then
+		error('Hardware file' .. script .. ' could not be loaded')
+	end
+	local hw = f()
+	if type(hw) ~= 'table' then
+		error('Hardware file' .. script .. ' did not return table')
+	end
+	return hw
+end
+
 -- Following are the functions and variables which can be accessed from within the script
 
 -- Other hardware commands
 
-function api.led(value, led)
+function api.vpet.btn(button)
+	return vpet.input[button]
+end
+
+function api.vpet.led(value, led)
 	led = led or vpet.hw.output.defaultled
 	if value ~= nil then
 		led.on = value and true or false
@@ -1013,7 +1064,7 @@ function api.led(value, led)
 	return led.on
 end
 
-function api.loadpage(file, page, lcd)
+function api.vpet.loadpage(file, page, lcd)
 	local appstate = vpet.appstack:peek()
 	lcd = lcd or vpet.hw.output.defaultlcd
 	page = page or #appstate.vram + 1
@@ -1027,7 +1078,7 @@ end
 
 -- App control commands
 
-function api.subapp(appname, cansub)
+function api.vpet.subapp(appname, cansub)
 	if not vpet.cansub then
 		return false, 'App does not have permission to call other apps.'
 	end
@@ -1050,9 +1101,9 @@ function api.subapp(appname, cansub)
 			vpet.hw.output.defaultlcd:getColorRGB(index)
 		end
 		vpet.appstack:push(appstate)
-		draw.setColor(1, 0)
-		draw.setDest(0, 'screen')
-		draw.setSrc(0, 'screen')
+		api.draw.setColor(1, 0)
+		api.draw.setDest(0, 'screen')
+		api.draw.setSrc(0, 'screen')
 		local ok
 		ok, appstate.app = pcall(appstate.chunk)
 		if not ok then
@@ -1067,9 +1118,9 @@ function api.subapp(appname, cansub)
 			if not appstate.vram[1] then
 				appstate.vram[1] = vpet:newpage()
 			end
-			draw.setSrc(0, 'screen')
-			draw.setSrc(1, 'app')
-			draw.setColor(1, 0)
+			api.draw.setSrc(0, 'screen')
+			api.draw.setSrc(1, 'app')
+			api.draw.setColor(1, 0)
 		--if cansub then appstate.app.applist = vpet:listapps('apps/') end
 			vpet.cansub = cansub
 			return true
@@ -1079,7 +1130,7 @@ function api.subapp(appname, cansub)
 	end
 end
 
-function api.quit()
+function api.vpet.quit()
 	if #vpet.appstack > 1 then
 		-- there's another app on the stack, so return to it
 		vpet.appstack:pop()
@@ -1093,13 +1144,13 @@ function api.quit()
 	end
 end
 
-function api.listapps()
+function api.vpet.listapps()
 	if vpet.cansub then return vpet:listapps('apps/') else error() end
 end
 
 -- These are the new draw functions --------
 
-function draw.setColor(color, bgcolor)
+function api.draw.setColor(color, bgcolor)
 	local appstate = vpet.appstack:peek()
 	local drawstate = appstate.vram.draw
 	drawstate.color = color or drawstate.color
@@ -1107,12 +1158,12 @@ function draw.setColor(color, bgcolor)
 	love.graphics.setColor(appstate.desthw:getColorRGB(drawstate.color))
 end
 
-function draw.getColor()
+function api.draw.getColor()
 	local drawstate = vpet.appstack:peek().vram.draw
 	return drawstate.color, drawstate.bgcolor
 end
 
-function draw.setDest(page, hw)
+function api.draw.setDest(page, hw)
 	local appstate = vpet.appstack:peek()
 	if type(hw) == 'number' then
 		if vpet.hw.output[hw] then
@@ -1141,7 +1192,7 @@ function draw.setDest(page, hw)
 	appstate.dest = appstate.desthw.vram[appstate.destpage]
 end
 
-function draw.setSrc(page, hw)
+function api.draw.setSrc(page, hw)
 	local appstate = vpet.appstack:peek()
 	if type(hw) == 'number' then
 		if vpet.hw.output[hw] then
@@ -1170,16 +1221,16 @@ function draw.setSrc(page, hw)
 	appstate.src = appstate.srchw.vram[appstate.srcpage]
 end
 
-function draw.cls(color)
+function api.draw.cls(color)
 	local vram = vpet.appstack:peek().vram
-	local oldc, bgc = draw.getColor()
-	draw.setColor(color or bgc)
-	draw.rect()
-	draw.setColor(oldc)
+	local oldc, bgc = api.draw.getColor()
+	api.draw.setColor(color or bgc)
+	api.draw.rect()
+	api.draw.setColor(oldc)
 end
 
-function draw.rect(x, y, w, h)
-	draw.setColor()
+function api.draw.rect(x, y, w, h)
+	api.draw.setColor()
 	local appstate = vpet.appstack:peek()
 	if type(x) == 'table' then
 		local rect = x
@@ -1198,8 +1249,8 @@ function draw.rect(x, y, w, h)
 	end)
 end
 
-function draw.pix(x, y)
-	draw.setColor()
+function api.draw.pix(x, y)
+	api.draw.setColor()
 	x = math.floor(x)
 	y = math.floor(y)
 	vpet.appstack:peek().dest:renderTo(function()
@@ -1207,7 +1258,7 @@ function draw.pix(x, y)
 	end)
 end
 
-function draw.blit(srcx, srcy, w, h, destx, desty)
+function api.draw.blit(srcx, srcy, w, h, destx, desty)
 	local appstate = vpet.appstack:peek()
 	srcx = srcx or 0
 	srcy = srcy or 0
@@ -1217,21 +1268,21 @@ function draw.blit(srcx, srcy, w, h, destx, desty)
 	desty = desty or 0
 	local quad = vpet.hw.output.defaultlcd.vram.quad
 	quad:setViewport(srcx, srcy, w, h)
-	love.graphics.setColor(vpet.IMAGECOLOR)
+	love.graphics.setColor(vpet.const.imageColor)
 	appstate.dest:renderTo(function()
 		love.graphics.draw(appstate.src, quad, destx, desty)
 	end)
-	draw.setColor()
+	api.draw.setColor()
 end
 
-function draw.text(str, x, y, align, rect)
+function api.draw.text(str, x, y, align, rect)
 	local appstate = vpet.appstack:peek()
 	str = tostring(str)
 	x = x or 0
 	y = y or 0
 	align = align or 1
 	-- TODO: currently, text uses a special src page that can be colorized. I'd like to generalize this eventually
-	local oldc, bgc = draw.getColor()
+	local oldc, bgc = api.draw.getColor()
 	local oldsrc = appstate.src
 	appstate.src = vpet.hw.output.defaultlcd.vram.font
 	local ch, srcx, srcy, xi, yi, width
@@ -1239,25 +1290,25 @@ function draw.text(str, x, y, align, rect)
 	xi = ((align - 1) * width) / 2
 	yi = 0
 	if rect then
-		draw.setColor(type(rect) == 'number' and rect or bgc)
-		draw.rect(x + xi - 1, y + yi, width + 1, 8)
+		api.draw.setColor(type(rect) == 'number' and rect or bgc)
+		api.draw.rect(x + xi - 1, y + yi, width + 1, 8)
 	end
 	-- FIXME: HAAAAXXXX
-	local oldIMAGECOLOR = vpet.IMAGECOLOR
-	vpet.IMAGECOLOR = appstate.desthw:getColorRGB(oldc)
+	local oldImageColor = vpet.const.imageColor
+	vpet.const.imageColor = appstate.desthw:getColorRGB(oldc)
 	for i = 1, #str do
 		ch = str:byte(i)
 		srcx = (ch % 16) * 4
 		srcy = math.floor(ch / 16) * 8
-		draw.blit(srcx, srcy, 4, 8, x + (i - 1) * 4 + xi, y + yi)
+		api.draw.blit(srcx, srcy, 4, 8, x + (i - 1) * 4 + xi, y + yi)
 	end
-	vpet.IMAGECOLOR = oldIMAGECOLOR
-	draw.setColor(oldc, bgc)
+	vpet.const.imageColor = oldImageColor
+	api.draw.setColor(oldc, bgc)
 	appstate.src = oldsrc
 end
 
-function draw.line(x0, y0, x1, y1)
-	draw.setColor()
+function api.draw.line(x0, y0, x1, y1)
+	api.draw.setColor()
 	x0 = math.floor(x0)
 	x1 = math.floor(x1)
 	y0 = math.floor(y0)
@@ -1269,7 +1320,7 @@ function draw.line(x0, y0, x1, y1)
 	local err = math.floor((dx > dy and dx or -dy) / 2)
 	local e2 = 0
 	while true do
-		draw.pix(x0, y0)
+		api.draw.pix(x0, y0)
 		if x0 == x1 and y0 == y1 then break end
 		e2 = err
 		if e2 >= -dx then

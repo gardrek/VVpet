@@ -1,10 +1,10 @@
 function love.conf(t)
-	t.identity = 'VVpet'              -- The name of the save directory (string)
+	t.identity = 'VVpet'                -- The name of the save directory (string)
 	t.gammacorrect = false              -- Enable gamma-correct rendering, when supported by the system (boolean)
 
-	t.window.title = 'VVpet'          -- The window title (string)
+	t.window.title = 'VVpet'            -- The window title (string)
 	t.window.icon = 'icon.png'          -- Filepath to an image to use as the window's icon (string)
-	t.window.width = 800               -- The window width (number)
+	t.window.width = 800                -- The window width (number)
 	t.window.height = 600               -- The window height (number)
 	t.window.borderless = false         -- Remove all border visuals from the window (boolean)
 	t.window.resizable = true           -- Let the window be user-resizable (boolean)

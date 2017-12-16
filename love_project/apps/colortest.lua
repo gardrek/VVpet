@@ -26,12 +26,12 @@ local colors = {
 local bgc
 
 function game:draw()
-	bgc = vpet.btn['2'] and 1 or 0
+	bgc = vpet.btn('2') and 1 or 0
 	draw.setColor(nil, bgc)
 	draw.cls()
 	for i, v in ipairs(colors) do
 		--draw.setColor(bgc, v)
-		if vpet.btn['1'] then
+		if vpet.btn('1') then
 			draw.setColor(bgc, v)
 		else
 			draw.setColor(v, bgc)

@@ -1,3 +1,5 @@
+return {}
+--[=================[
 local game = {}
 
 local cursor = {
@@ -105,3 +107,4 @@ function game:event(type, data)
 end
 
 return game
+--]=================]

@@ -40,6 +40,10 @@ function lerp(a, b, t) return (1 - t) * a + t * b end
 -- Map functions
 local map = {}
 
+map.data = {}
+
+map.next = {}
+
 map.x = 0 --16
 map.y = 0 --16
 map.w = 64
@@ -62,16 +66,16 @@ local Water = {
 map.defaultTile = TILE.FLOOR
 
 function map:set(x, y, tile)
-	self[math.floor(y % 256) * 256 + math.floor(x % 256)] = tile % 256
+	self.data[math.floor(y % 256) * 256 + math.floor(x % 256)] = tile % 256
 end
 
 function map:get(x, y)
 	local i = math.floor(y % 256) * 256 + math.floor(x % 256)
-	if not self[i] then
-		self[i] = map.defaultTile
+	if not self.data[i] then
+		self.data[i] = map.defaultTile
 	end
-	return self[i]
-	--return self[math.floor(y % 256) * 256 + math.floor(x % 256)] or map.defaultTile
+	return self.data[i]
+	--return self.data[math.floor(y % 256) * 256 + math.floor(x % 256)] or self.defaultTile
 end
 
 function map:isSolid(x, y)
@@ -161,6 +165,7 @@ function Water:update()
 			i = i + 1
 		end
 	end
+	--[==[
 	local depth_up, depth_down, depth_left, depth_right
 	local fill_left, fill_right, fill_divided, fill_self
 	-- loop through the map to uppdate water tiles
@@ -217,6 +222,7 @@ function Water:update()
 			end
 		end
 	end
+	--]==]
 end
 
 function Water:draw()
@@ -357,7 +363,7 @@ function game:update(dt)
 	--if on the ground and the
 	--user presses 2 or up...
 	-- FIXME: change this to be when pressed down, not while held
-	if (vpet.btn['up'] or vpet.btn['2']) and p1.isgrounded then
+	if (vpet.btn('up') or vpet.btn('2')) and p1.isgrounded then
 		--launch the player upwards
 		p1.dy = -p1.jumpvel
 	end
@@ -366,10 +372,10 @@ function game:update(dt)
 	--
 
 	p1.dx = 0
-	if vpet.btn['left'] then --left
+	if vpet.btn('left') then --left
 		p1.dx = -1
 	end
-	if vpet.btn['right'] then --right
+	if vpet.btn('right') then --right
 		p1.dx = 1
 	end
 
@@ -450,9 +456,9 @@ function game:update(dt)
 		end
 	end
 
-	map:update()
 	if frametime > 0.4 then
-		Water:update()
+		map:update()
+		--Water:update()
 		frametime = frametime % 0.4
 	end
 
