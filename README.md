@@ -5,6 +5,13 @@
 ## Interface
 VVpet is an emulator for virtual pets that never existed. VVpet is not precisely a fantasy console, but rather a set of related fantasy consoles and tools to create your own. The vPET series of virtual consoles includes flagship vPET64, the main console which the others are each a variation of.
 
+The emulation interface has the following key bindings:
+
+| Emulator Key | Function |
+|-|-
+| Minus - | Decrease size
+| Equals = | Increase size
+
 Consoles in the vPET series have the following buttons, which are mapped to keys on the keyboard:
 
 | vPET | Emulator Key |
@@ -123,7 +130,7 @@ Fills a rectangle with a single color.
 Colors a single pixel.
 
 ---
-`draw.blit(api.blit(srcx, srcy, w, h, destx, desty)`
+`draw.blit(srcx, srcy, w, h, destx, desty)`
 
 copies a rectangle of pixels from one page to another (or the same)
 

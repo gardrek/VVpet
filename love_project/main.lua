@@ -11,7 +11,7 @@ api.vpet = {}
 api.draw = {}
 api.hw = {}
 
-local hw = {}
+local hwapi = {}
 
 function love.load()
 	-- Love set-up stuff
@@ -41,6 +41,8 @@ function love.load()
 		print('Background image ' .. emu.bg.imagefile .. ' not found.')
 	end
 
+	emu.bg.image:setFilter('linear', 'linear')
+
 	function emu:setcozy(newcozy)
 		if newcozy then
 			self.cozy = newcozy
@@ -50,7 +52,10 @@ function love.load()
 		end
 		local w = love.graphics.getWidth()
 		local h = love.graphics.getHeight()
-		local scale = math.min(math.floor(w / vpet.hw.base.minw), math.floor(h / vpet.hw.base.minh))
+		local scale = math.min(
+			math.floor(w / (vpet.hw.base.minw * vpet.hw.base.scale)),
+			math.floor(h / (vpet.hw.base.minh * vpet.hw.base.scale))
+		)
 		if scale - self.cozy < 1 then
 			self.cozy = scale - 1
 		end
@@ -89,13 +94,16 @@ function love.load()
 			-- Put in a keyboard key and it gives you the button that key is assigned to
 			vpet.inputreversemap[emukey] = button
 		end
-		-- FIXME: This is actually important, I think, so I should explain why here, but I forgot why
+		-- This way, if a button just doesn't exist, you get nil, but if it does,
+		-- you get false when it's not pushed and true when it is
+		-- TODO: Maybe make it return the number of frames or something useful
+		-- instead of just true?
 		vpet.input[button] = false
 	end
 
 	-- set up sandbox environments
 
-	hw.hwdir = 'hw/'
+	hwapi.hwdir = hwapi.getDir() -- TODO: deprecate
 
 	vpet.global_names = {
 		-- Functions and variables
@@ -137,14 +145,17 @@ function love.load()
 
 	-- load hardware --------
 
+	-- FIXME: each instance should have its own PRNG state, or at the very least not be able to call math.randomseed()
+	math.randomseed(os.time())
+
 	local err
-	vpet.hw, err = vpet:loadhardware('vpet64.lua', vpet.hwdir)
-	vpet.hw, err = vpet:loadhardware('vpet48.lua', vpet.hwdir)
-	vpet.hw, err = vpet:loadhardware('vpet_supertest.lua', vpet.hwdir)
-	vpet.hw, err = vpet:loadhardware('vv8.lua', vpet.hwdir)
-	vpet.hw, err = vpet:loadhardware('space.lua', vpet.hwdir)
-	vpet.hw, err = vpet:loadhardware('bigpet.lua', vpet.hwdir)
-	vpet.hw, err = vpet:loadhardware('vvboy.lua', vpet.hwdir)
+	--vpet.hw, err = vpet:loadhardware('vpet64.lua')
+	--vpet.hw, err = vpet:loadhardware('vpet48.lua')
+	--vpet.hw, err = vpet:loadhardware('vpet_supertest.lua')
+	--vpet.hw, err = vpet:loadhardware('vv8.lua')
+	--vpet.hw, err = vpet:loadhardware('space.lua')
+	--vpet.hw, err = vpet:loadhardware('bigpet.lua')
+	vpet.hw, err = vpet:loadhardware('vvboy.lua')
 
 	if not vpet.hw then
 		print('Hardware failed to load with the following error:')
@@ -179,11 +190,9 @@ function love.load()
 	--appname = 'shooter'
 	--appname = 'watercaves'
 
-	--vpet.appdir, appname = 'hw/space/apps/', 'shooter'
-	vpet.appdir, appname = 'rom/', 'applist'
+	--vpet.appdir, appname = 'hw/space/apps/', 'shooter' -- FIXME:HAXXXX
+	vpet.appdir, appname = 'rom/', 'applist' -- FIXME:HAXXXX
 
-	--vpet.appdir = 'rom/' -- FIXME:HAXXXX
-	--vpet.appdir = 'hw/space/apps/' -- FIXME:HAXXXX
 	vpet.cansub = true
 	local ok, err = api.vpet.subapp(appname, true)
 	if not ok then error(err) end
@@ -197,14 +206,14 @@ function love.update(dt)
 	if app.update and type(app.update) == 'function' then
 		app:update(dt)
 	end
-	--[[
+	-- Simulate LCD ghosting.
+	--[[ Process:
 	Clear SF to alpha
 	Draw D to SF normally
 	Draw SB to SF normally
 	Draw D to SB translucently
-	Draw SF to screen normally
+	Draw SF to screen normally (in love.draw)
 	]]
-	-- Simulate LCD ghosting. TODO: move this into update and account for delta-time
 	if vpet.hw.output then
 		for index, unit in ipairs(vpet.hw.output) do
 			if unit.type == 'lcd' then
@@ -235,10 +244,10 @@ function vpet:updatemousecheap()
 	mouse.down = love.mouse.isDown(1)
 	for key, obj in pairs(vpet.hw.input.buttons) do
 		x1, y1, x2, y2 =
-			emu.center.x + (obj.x - obj.w / 2) * emu.scale,
-			emu.center.y + (obj.y - obj.h / 2) * emu.scale,
-			emu.center.x + (obj.x + obj.w / 2) * emu.scale,
-			emu.center.y + (obj.y + obj.h / 2) * emu.scale
+			emu.center.x + (obj.x * vpet.hw.base.scale - obj.w / 2 * obj.scale) * emu.scale,
+			emu.center.y + (obj.y * vpet.hw.base.scale - obj.h / 2 * obj.scale) * emu.scale,
+			emu.center.x + (obj.x * vpet.hw.base.scale + obj.w / 2 * obj.scale) * emu.scale,
+			emu.center.y + (obj.y * vpet.hw.base.scale + obj.h / 2 * obj.scale) * emu.scale
 		if mouse.x <= x2 and mouse.x > x1 and mouse.y <= y2 and mouse.y > y1 then
 			if mouse.down and not was_pressed then
 				mouse.pressed_key = key
@@ -317,9 +326,9 @@ function love.draw()
 	if vpet.hw.base.image then
 		love.graphics.draw(
 			vpet.hw.base.image,
-			emu.center.x + vpet.hw.base.x * emu.scale,
-			emu.center.y + vpet.hw.base.y * emu.scale,
-			0, emu.scale
+			emu.center.x + vpet.hw.base.x * emu.scale * vpet.hw.base.scale,
+			emu.center.y + vpet.hw.base.y * emu.scale * vpet.hw.base.scale,
+			0, emu.scale * vpet.hw.base.scale
 		)
 	end
 	--]]
@@ -332,15 +341,15 @@ function love.draw()
 			if image then
 				love.graphics.draw(
 					image,
-					emu.center.x + (v.x - image:getWidth() / 2) * emu.scale,
-					emu.center.y + (v.y - image:getHeight() / 2) * emu.scale,
-					0, emu.scale
+					emu.center.x + (v.x * vpet.hw.base.scale - image:getWidth() / 2 * v.scale) * emu.scale,
+					emu.center.y + (v.y * vpet.hw.base.scale - image:getHeight() / 2 * v.scale) * emu.scale,
+					0, emu.scale * v.scale
 				)
 			end
 		end
 	end
 
-	--draw outputs
+	---[=======[draw outputs
 	if vpet.hw.output then
 		for index, unit in ipairs(vpet.hw.output) do
 			if unit.type == 'led' then
@@ -349,14 +358,14 @@ function love.draw()
 					love.graphics.setColor(vpet.const.imageColor)
 					love.graphics.draw(
 						image,
-						emu.center.x + (unit.x - unit.w / 2) * emu.scale,
-						emu.center.y + (unit.y - unit.h / 2) * emu.scale,
-						0, emu.scale
+						emu.center.x + (unit.x * vpet.hw.base.scale - unit.w / 2 * unit.scale) * emu.scale,
+						emu.center.y + (unit.y * vpet.hw.base.scale - unit.h / 2 * unit.scale) * emu.scale,
+						0, emu.scale * unit.scale
 					)
 				end
 			elseif unit.type == 'lcd' then
+				--[[
 				if unit.bgcolor then
-					--[[
 					love.graphics.setColor(unit.bgcolor)
 					love.graphics.rectangle(
 						'fill',
@@ -364,8 +373,8 @@ function love.draw()
 						emu.center.y + (unit.y - unit.h / 2) * emu.scale,
 						unit.w * emu.scale, unit.h * emu.scale
 					)
-					--]]
 				end
+				--]]
 				love.graphics.setColor(vpet.const.imageColor)
 				unit.screenCanvas:renderTo(function()
 					for subindex, subunit in ipairs(unit) do
@@ -397,13 +406,14 @@ function love.draw()
 				love.graphics.setColor(vpet.const.imageColor)
 				love.graphics.draw(
 					unit.shadowCanvasFront,
-					emu.center.x + (unit.x - unit.w / 2) * emu.scale,
-					emu.center.y + (unit.y - unit.h / 2) * emu.scale,
-					0, emu.scale
+					emu.center.x + (unit.x * vpet.hw.base.scale - unit.w / 2 * unit.scale) * emu.scale,
+					emu.center.y + (unit.y * vpet.hw.base.scale - unit.h / 2 * unit.scale) * emu.scale,
+					0, emu.scale * unit.scale
 				)
 			end
 		end
 	end
+	--]=======]
 
 	if vpet.DEBUG then
 		if vpet.hw and vpet.hw.output and vpet.hw.output.defaultlcd then
@@ -506,22 +516,15 @@ function vpet:closest_color_index(colors, r, g, b, a)
 	return color
 end
 
-function vpet:readonlytable(table) -- FIXME: this should be removed. The only use is in the table btn, which should be replaced with a function
-	return setmetatable({}, {
-		__index = table,
-		__newindex =
-			function(table, key, value)
-				error('Attempt to modify read-only table')
-			end,
-		__metatable = false,
-	})
-end
-
 function vpet:newEnv(api_tables, global_names)
 	local env = {}
 	local g, t
 
 	global_names = global_names or vpet.global_names
+
+	if type(global_names) ~= 'table' or type(api_tables) ~= 'table' then
+		error('Arguments should be tables', 2)
+	end
 
 	for i, name in ipairs(global_names) do
 		g = _G[name]
@@ -718,9 +721,9 @@ function vpet:listapps(dir)
 end
 
 function vpet:loadhardware(file, dir)
-	dir = dir or hw.hwdir
+	dir = dir or hwapi.getDir()
 
-	local success, hw = pcall(vpet:loadscript(dir..file, self:newEnv(hw)))
+	local success, hw = pcall(vpet:loadscript(dir..file, self:newEnv(hwapi)))
 
 	local loaded = {}
 	--loaded.dir = dir
@@ -764,10 +767,10 @@ function vpet:loadhardware(file, dir)
 			for i, v in ipairs(source) do
 				if type(v) == 'string' then
 					file = dir..v
-					if love.filesystem.exists(file) then
+					if love.filesystem.isFile(file) then
 						dest[i] = love.graphics.newImage(file)
 					else
-						print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
+						print('hardware '..id..': '..errormessage..' image "'..file..'" not a file')
 						hw_errors = hw_errors + 1
 					end
 				elseif v then
@@ -781,16 +784,18 @@ function vpet:loadhardware(file, dir)
 				if type(v) == 'string' then
 					if source[v] then
 						file = dir..source[v]
-						if love.filesystem.exists(file) then
+						if love.filesystem.isFile(file) then
 							dest[v] = love.graphics.newImage(file)
 						else
-							print('hardware '..id..': '..errormessage..' image "'..file..'" not loaded')
+							print('hardware '..id..': '..errormessage..' image "'..file..'" not a file')
 							hw_errors = hw_errors + 1
 						end
 					elseif v then
+						--[[
 						dest[v] = false
-						--print('hardware '..id..': '..errormessage..' image: "'..tostring(v)..'" not a string')
+						print('hardware '..id..': '..errormessage..' image: "'..tostring(v)..'" not a string ')
 						hw_warnings = hw_warnings + 1
+						--]]
 					end
 				end
 			end
@@ -823,7 +828,8 @@ function vpet:loadhardware(file, dir)
 
 	if hw.base then
 		loaded.base = {}
-		loaded.base.scale = hw.base.scale or 1
+		loaded.base.defaultscale = hw.base.defaultscale or 1
+		loaded.base.scale = hw.base.scale or loaded.base.defaultscale
 
 		local malformed = false
 		for i, v in ipairs{'x', 'y', 'w', 'h', 'minw', 'minh'} do
@@ -842,15 +848,16 @@ function vpet:loadhardware(file, dir)
 		loaded.base.minh = loaded.base.minh or loaded.base.h
 
 		local w, h, flags = love.window.getMode()
-		if flags.minwidth ~= loaded.base.minw or flags.minheight ~= loaded.base.minh then
-			flags.minwidth = loaded.base.minw
-			flags.minheight = loaded.base.minh
+		local minw, minh = loaded.base.minw * loaded.base.scale, loaded.base.minh * loaded.base.scale
+		if flags.minwidth ~= minw or flags.minheight ~= minh then
+			flags.minwidth = minw
+			flags.minheight = minh
 			love.window.setMode(w, h, flags)
 		end
 		w, h, flags = nil, nil, nil
 
 		file = dir..hw.base.image
-		if love.filesystem.exists(file) then
+		if love.filesystem.isFile(file) then
 			loaded.base.image = love.graphics.newImage(file)
 		else
 			print('hardware '..id..': base image "'..file..'" not loaded')
@@ -876,6 +883,7 @@ function vpet:loadhardware(file, dir)
 						unit.y = o.y
 						unit.w = o.w
 						unit.h = o.h
+						unit.scale = o.scale or loaded.base.defaultscale
 					end
 				end
 				if o.type == 'led' then
@@ -884,8 +892,9 @@ function vpet:loadhardware(file, dir)
 					end
 					load_images(unit, o, {'image_on', 'image_off'}, 'LED'..tostring(i1))
 				elseif o.type == 'lcd' then
-					if not loaded.output.defaultlcd then
+					if o.default or not loaded.output.defaultlcd then
 						loaded.output.defaultlcd = unit
+						unit.default = true
 					end
 					unit.defaultdotmatrix = false
 					unit.bgcolor = o.bgcolor
@@ -976,28 +985,30 @@ function vpet:loadhardware(file, dir)
 		loaded.input = {}
 		if hw.input.buttons then
 			loaded.input.buttons = {}
-			for button,t in pairs(hw.input.buttons) do
+			for button, t in pairs(hw.input.buttons) do
 				loaded.input.buttons[button] = {
 					x = t.x,
 					y = t.y,
 					h = t.h,
 					w = t.w,
+					scale = t.scale or loaded.base.defaultscale,
 				}
 				load_images(loaded.input.buttons[button], t, {'image', 'image_up', 'image_down'}, 'Button')
 			end
 		end
 	end
 
+	---[[FIXME: remove or use this code
 	local geometry_default = {
-		x = 0, y = 0,
-		w = 8, h = 8,
+		--x = 0, y = 0,
+		--w = 8, h = 8,
 		scale = 1,
 	}
 
 	function set_defaults(unit, default)
 		default = default or geometry_default
 		for k, v in pairs(default) do
-			if not unit[k] then
+			if not (unit[k] and type(unit[k]) == 'number') then
 				unit[k] = v
 				hw_warnings = hw_warnings + 1
 			end
@@ -1009,6 +1020,8 @@ function vpet:loadhardware(file, dir)
 			
 		end
 	end
+	--END FIXME
+	--]]
 
 	return finish(loaded)
 end
@@ -1036,8 +1049,12 @@ end
 
 -- These functions are used within hardware description files
 
-function hw.inherithw(script)
-	local f = vpet:loadscript(script, vpet:newEnv(hw))
+function hwapi.getDir()
+	return 'hw/'
+end
+
+function hwapi.inherithw(script)
+	local f = vpet:loadscript(script, vpet:newEnv(hwapi))
 	if not f then
 		error('Hardware file' .. script .. ' could not be loaded')
 	end
@@ -1163,6 +1180,7 @@ function api.draw.getColor()
 	return drawstate.color, drawstate.bgcolor
 end
 
+-- TODO: merge the common parts of these two functions. remember, DRY not WET
 function api.draw.setDest(page, hw)
 	local appstate = vpet.appstack:peek()
 	if type(hw) == 'number' then
@@ -1281,7 +1299,9 @@ function api.draw.text(str, x, y, align, rect)
 	x = x or 0
 	y = y or 0
 	align = align or 1
-	-- TODO: currently, text uses a special src page that can be colorized. I'd like to generalize this eventually
+	-- TODO: currently, text uses a special src page that can be colorized.
+	-- I'd like to generalize this eventually and implement a system for
+	-- loading this sort of colorable, 1-bit image in general
 	local oldc, bgc = api.draw.getColor()
 	local oldsrc = appstate.src
 	appstate.src = vpet.hw.output.defaultlcd.vram.font
