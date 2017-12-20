@@ -1,0 +1,3 @@
+return {
+	input = 29
+}

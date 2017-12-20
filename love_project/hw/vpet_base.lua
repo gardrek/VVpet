@@ -4,14 +4,15 @@
 -- the format of the table is detailed below
 -- all x, y co-ordinates are measured with the origin at the CENTER of the device
 
-local basedir = 'vpet64/'
+local basedir = 'vpet/'
+local buttondir = basedir .. 'buttons/'
 
 local hw = {
 	-- available categories include: info, base, output, input
 	base = {
 		-- base specifies the background image of the device, and the default dimensions of the device
 		-- minw and minh are the minimum height and width around the origin that must be shown
-		image = basedir..'base.png',
+		image = basedir .. 'shells/vpet.png',
 		x = -64,
 		y = -64,
 		h = 128,
@@ -30,8 +31,8 @@ local hw = {
 			y = -56,
 			w = 4,
 			h = 4,
-			image_on = basedir..'led_on.png',
-			image_off = basedir..'led_off.png',
+			image_on = basedir .. 'led_on.png',
+			image_off = basedir .. 'led_off.png',
 		},
 		--[[
 		{
@@ -124,15 +125,5 @@ local hw = {
 		},
 	},
 }
-
-for k,v in pairs(hw.input.buttons) do
-	if tonumber(k) then -- this is hacky, but I like it
-		v.image_up = basedir..'screen_button.png'
-		v.image_down = basedir..'screen_button_pressed.png'
-	else
-		v.image_up = basedir..k..'_button.png'
-		v.image_down = basedir..k..'_button_pressed.png'
-	end
-end
 
 return hw

@@ -2,8 +2,13 @@
 
 ![Animated image of VVpet running](https://i.imgur.com/vhCwHG2.gif)
 
+VVpet is a system for making and playing virtual LCD games. VVpet is not just one fantasy console, but more like a set of related fantasy consoles. It also allows one to easily make their own fantasy consoles, as well as games for those consoles.
+
+## Getting Started
+VVpet is made with Löve 0.10.2, so you will need that to run it. Once you have love, simply run love with the project folder as the game, for example: in a terminal, run `love love_project`; or, in a gui, drag the folder to the Löve executable.
+
 ## Interface
-VVpet is an emulator for virtual pets that never existed. VVpet is not precisely a fantasy console, but rather a set of related fantasy consoles and tools to create your own. The vPET series of virtual consoles includes flagship vPET64, the main console which the others are each a variation of.
+VVpet is an emulator for virtual pets that never existed. VVpet is not just one fantasy console, but rather a set of related fantasy consoles and tools to create your own. VVpet comes with the vPET series of virtual consoles, including flagship vPET64, the main console which the others are each a variation of.
 
 The emulation interface has the following key bindings:
 
@@ -12,7 +17,7 @@ The emulation interface has the following key bindings:
 | Minus - | Decrease size
 | Equals = | Increase size
 
-Consoles in the vPET series have the following buttons, which are mapped to keys on the keyboard:
+Consoles in the vPET series may have the following buttons, which are mapped to keys on the keyboard:
 
 | vPET | Emulator Key |
 |-|-
@@ -20,13 +25,10 @@ Consoles in the vPET series have the following buttons, which are mapped to keys
 | Screen buttons 1, 2, and 3 | 1 / Z, 2 / X, 3 / C
 | Back Button | Backspace
 | Home Button | Escape
-
-The following additional buttons are also mapped:
-
-| vPET | Emulator Key |
-|-|-
 | a | control, v, n
 | b | shift, b
+
+Note that some vPET consoles do not have action buttons 'a' and 'b'
 
 ## Files
 Your application should have a unique name, and the location of the main script should be one of the following:
@@ -67,10 +69,17 @@ Below is a small sample program illustrating this. Note the `table:method` synta
 
     return game
 
-The following are the available callback functions: `draw()`, `update(dt)`, `event(type, data)`
+The following are the available callback functions: `draw()`, `update(dt)`, `event(type, data)`, `quit()`
 
-This is called when an event happens. Currently, the only event type is `'button'` and it's data structure is `{button , up , down}`
-`button` is one of the button strings: `'back'`, `'home'`, `'1'`, `'2'`, `'3'`, `'left'`, `'right'`, `'up'`, and `'down'`. `'up` and `'down'` are booleans, giving whether the button is up or down. `'up'` is always the opposite of `'down'`.
+This is called when an event happens. The event types are:
+
+`'button'`
+
+This event is triggered when a button is pressed or released. The data table has the keys is `button`, `up`, and `down`. `button` is one of the button strings: `'back'`, `'home'`, `'1'`, `'a'`, `'left'` etc. `'up` and `'down'` are booleans, giving whether the button is up or down. `'up'` is always the opposite of `'down'`.
+
+`'quit'`
+
+This even is triggered when the app stops running. The data structure is empty in the current version
 
 These are also subject to change.
 
@@ -164,3 +173,5 @@ Exits the app, returning to the calling app, if there is one.
 ## Future work
 
 Virtual hardware specification files are included, and the comments in those files provide enough documentation to make your own hardware. However, this is not documented in this README as it is subject to change. The hardware loading function is full of assumptions and errors waiting to happen. Modify hardware with caution.
+
+![Icon image](/love_project/icon.png)

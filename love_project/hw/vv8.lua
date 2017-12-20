@@ -1,44 +1,22 @@
--- testing for pixelimage support
 
--- hw description returns a table with at least the members output and input
--- the format of the table is detailed below
--- all x, y co-ordinates are measured with the origin at the CENTER of the device
+local hw = inherithw(hwdir .. 'vpet_base.lua')
 
---local success, hw = loadscript('hw/vpet_base.lua')
-
---if not success then print('no hw') return nil end
-
-local hw = inherithw(hwdir..'vpet_base.lua')
+local api = inherithw(hwdir .. 'base.lua')
 
 hw.info = {
 	name = 'VV8',
 	version = {0, 0, 1},
 }
 
-local basedir = 'vpet64/'
+local basedir = 'vpet/'
+local buttondir = basedir .. 'buttons/'
 
-local lcd = {
-	-- the lcd unit contains other units specific to it. these units should not appear outside an lcd unit
-	-- the lcd subunits are: dotmatrix, backlight, pixelimage
-	-- dotmatrix is a rectangular array of pixels which are all the same shape
-	-- TODO: backlight lights up the display
-	-- pixelimage is for non-square pixels like on seven-segment displays Game and Watch
-	type = 'lcd',
-	x = 0,
-	y = -16,
-	w = 68,
-	h = 68,
-	bgcolor = {0xee, 0xee, 0xee},
-	vram = {
-	-- vram is basically a set of spritesheets called pages
-	-- page 0 is always initialized to a blank canvas, and is writable. other pages are read-only (for now)
-		w = 64,
-		h = 64,
-		font = basedir..'font.png',
-	},
-	backlight = {
-		color = {0x55, 0xaa, 0xff, 0x55},
-	},
+local lcd = api.newDotMatrixLCD(0, -16, 64, 64, 2)
+
+lcd.vram.font = 'font.png'
+
+lcd.backlight = {
+	color = {0x55, 0xaa, 0xff, 0x55},
 }
 
 -- VV8 color
@@ -58,6 +36,15 @@ for r = 0, 1 do
 	end
 end
 
+for index, color in pairs(lcd.colors) do
+	for channel, value in pairs(color) do
+		if value > 0xff then
+			color[channel] = 0xff
+			--print(index, channel, value)
+		end
+	end
+end
+
 lcd.colornames = {
 	White = 0,
 	Yellow = 1,
@@ -68,15 +55,6 @@ lcd.colornames = {
 	Blue = 6,
 	Black = 7,
 }
-
-for index, color in pairs(lcd.colors) do
-	for channel, value in pairs(color) do
-		if value > 0xff then
-			color[channel] = 0xff
-			--print(index, channel, value)
-		end
-	end
-end
 
 table.insert(lcd, {
 	type = 'dotmatrix',
@@ -92,15 +70,6 @@ table.insert(lcd, {
 
 table.insert(hw.output, lcd)
 
-for k,v in pairs(hw.input.buttons) do
-	if tonumber(k) then -- this is hacky, but I like it
-		v.image_up = basedir..'screen_button.png'
-		v.image_down = basedir..'screen_button_pressed.png'
-		--v.image_down = 'pika/pika.png'
-	else
-		v.image_up = basedir..k..'_button.png'
-		v.image_down = basedir..k..'_button_pressed.png'
-	end
-end
+api.vpetInsertButtonImages(hw, buttondir, {labels = false})
 
 return hw

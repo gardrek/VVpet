@@ -1,7 +1,7 @@
 
-local basedir = 'vpet64/'
+local basedir = 'vpet/'
 
-local vvboydir = 'vvboy/'
+local buttondir = basedir .. 'buttons/'
 
 local main_screen = {
 	w = 128,
@@ -10,16 +10,16 @@ local main_screen = {
 
 local hw = {
 	info = {
-		name = 'VVboy',
+		name = 'Action PET',
 		version = {0, 0, 1},
 	},
 	base = {
-		image = vvboydir .. 'base.png',
+		image = basedir .. 'shells/actionpet.png',
 		x = -math.floor(168 / 2),
 		y = -math.floor(96 / 2),
 		w = 168,
-		h = 96,
-		minw = 144,
+		h = 92,
+		minw = 152,
 		minh = 88,
 		defaultscale = 2,
 	},
@@ -101,7 +101,7 @@ local api = inherithw(hwdir .. 'base.lua')
 
 local lcd = api.newDotMatrixLCD(0, -6, main_screen.w, main_screen.h, 8)
 
-lcd.vram.font = basedir .. 'font.png'
+lcd.vram.font = 'font.png'
 
 lcd.scale = 1
 
@@ -137,17 +137,6 @@ for index, color in pairs(lcd.colors) do
 	end
 end
 
-table.insert(lcd, {
-	type = 'dotmatrix',
-	x = 0,
-	y = 0,
-	w = main_screen.w,
-	h = main_screen.h,
-	page = 0,
-	pagex = 0,
-	pagey = 0,
-})
-
 table.insert(hw.output, lcd)
 
 table.insert(hw.output, {
@@ -161,9 +150,13 @@ table.insert(hw.output, {
 	image_off = basedir .. 'led_off.png',
 })
 
+--[[
 for k,v in pairs(hw.input.buttons) do
-	v.image_up = basedir..k..'_button.png'
-	v.image_down = basedir..k..'_button_pressed.png'
+	v.image_up = basedir .. k .. '_button.png'
+	v.image_down = basedir .. k .. '_button_pressed.png'
 end
+--]]
+
+api.vpetInsertButtonImages(hw, buttondir, {labels = true})
 
 return hw

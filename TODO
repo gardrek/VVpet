@@ -1,42 +1,41 @@
 New features:
-  - Touch and Android
-    - Need to improve mouse support first
   - some form of hardware selection
   - API for apps to enumerate hardware at run-time, and read info about it
     - this ties into colors, as there's no way to enumerate colors as names or even get a numberof colors
     - This way, accessing unavailable hardware/vram pages can be avoided
   - config file
-  - file in app folder that initializes the game before Lua code is run?
-    - it could: load pages... I forgot what else...
+    - file in app folder that initializes the game before Lua code is run?
+      - it could: load pages... I forgot what else...
+  - Save functionality
   √ Separate environment for each app
     - an API for inter-app communication
       - inter-app communication could use the event system
-  - individual hardware component scaling
+  √ individual hardware component scaling
   - LCD Overhaul
     √ Ghosting
     - Image-Pixel improvement
-      - Individual unit scale is a requirement for Image-Pixel to make any sense
   - Implement D-Pad input unit
+    - needs its own entry in hw.input most likely
     - images for each direction, disallow up+down & left+right
     - other image set-ups?
   - Library, Lua file, and generic file loading
     - Perhaps a lib/ folder for shared libraries
-  - Save functionality
-  - PRNG state for each instance
-    - or, one shared state, which can't be affected by appss
+  √ PRNG state for each instance
+    √ or, one shared state, which can't be affected by appss
+  - Touch and Android
+    - Need to improve mouse support first
+  - begin work on a simple multitasking OS
+  - os.time etc
+  - generalize font code to work for loading and colorized drawing of 1-bit images
 
 Improvements:
-  - mouse control needs improvement
   - clean up the mess of a filesystem
     - rom/ folder needs a better name, and maybe to be moved?
-  √ Launching an app from another app
-    √ a launcher would be nice
-      √ improve the launcher
-      - begin work on a simple multitasking OS
   √ Replace btn array with something else
     √ Might as well be a function since you can't iterate over it
     - add a function that returns a table you _can_ iterate over?
       - this is hardware enumeration. these problems are all waiting to solve themselves
+  - mouse control needs improvement
 
 Bug Fixes/Glaring Problems:
   - Checking of hardware sanity
@@ -44,16 +43,24 @@ Bug Fixes/Glaring Problems:
     √ kind of fixed?
     - but it's still bad, just different, less bad bad
   √ Fix it so that loading new hardware sets minw and minh of the window context
+    - Move this (and all changes to global state) out of the loadhardware function
+  - canvases can be cleared by changing window mode, so this has been disabled temporarily
+    - requires refactoring of hardware data structure
 
 Small things:
   √ Stop from changing to a cozy level which would give a smaller scale than the lowest
-    ? improvement: allow cozy level to be higher than max, but don't _change to_ a cozy level higher than max
-      I think I did this? need to look into it, and probably to comment my code better
+    - improvement: allow cozy level to be higher than max, but don't _change to_ a cozy level higher than max
 
 Way in the future plans
+  - Add BitOp binary operators
   - Networking
   - Actual games and software for the vPET line
     - Aquarium-type game with boids for the fish?
       - A demo at least
     - Need an actual pet game
       - Need os.time to run simulation from when the program is closed, like Animal Crossing
+
+Finished:
+  √ Launching an app from another app
+    √ a launcher would be nice
+      √ improve the launcher
