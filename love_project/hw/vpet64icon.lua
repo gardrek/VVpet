@@ -11,7 +11,7 @@ hw.info = {
 	version = {0, 0, 1},
 }
 
-local vpet48dir = 'test/'
+hw.base.defaultscale = 2
 
 local lcd = {
 	-- the lcd unit contains other units specific to it. these units should not appear outside an lcd unit
@@ -47,10 +47,11 @@ local lcd = {
 		x = 0,
 		y = 8,
 		w = 64,
-		h = 48,
+		h = 64,
 		page = 0,
 		pagex = 0,
 		pagey = 16,
+		scale = 1,
 	},
 }
 
@@ -58,7 +59,7 @@ local pix = {
 	type = 'pixelimage',
 	x = 4,
 	y = 2,
-	atlas = vpet48dir..'pixelimage_atlas.png',
+	atlas = 'test/pixelimage_atlas.png',
 	quads = {},
 }
 

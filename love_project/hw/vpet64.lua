@@ -29,18 +29,6 @@ lcd.colors = {
 
 lcd.colornames = {White = 0, Black = 1}
 
-table.insert(lcd, {
-	type = 'dotmatrix',
-	x = 0,
-	y = 0,
-	w = 64,
-	h = 64,
-	page = 0,
-	pagex = 0,
-	pagey = 0,
-	scale = 1,
-})
-
 table.insert(hw.output, lcd)
 
 api.vpetInsertButtonImages(hw, buttondir, {labels = false})

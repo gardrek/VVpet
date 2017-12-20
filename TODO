@@ -38,6 +38,7 @@ Improvements:
   - mouse control needs improvement
 
 Bug Fixes/Glaring Problems:
+  - Fix image loading/drawing/etc to work with displays with different palettes
   - Checking of hardware sanity
   - Fix the roundabout and frankly hideous way that graphics pages are selected
     √ kind of fixed?
@@ -46,6 +47,8 @@ Bug Fixes/Glaring Problems:
     - Move this (and all changes to global state) out of the loadhardware function
   - canvases can be cleared by changing window mode, so this has been disabled temporarily
     - requires refactoring of hardware data structure
+  - disallow hardware overlapping
+    - currently this could cause bugs with buttons, screens, you name it
 
 Small things:
   √ Stop from changing to a cozy level which would give a smaller scale than the lowest
@@ -59,6 +62,7 @@ Way in the future plans
       - A demo at least
     - Need an actual pet game
       - Need os.time to run simulation from when the program is closed, like Animal Crossing
+  - Visual hardware editor?
 
 Finished:
   √ Launching an app from another app

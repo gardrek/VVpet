@@ -135,10 +135,12 @@ function love.load()
 	local err
 	--vpet.hw, err = vpet:loadhardware('bad.lua')
 	vpet.hw, err = vpet:loadhardware('vpet64.lua')
-	--vpet.hw, err = vpet:loadhardware('vpet48.lua')
+	--vpet.hw, err = vpet:loadhardware('vpet64icon.lua')
 	--vpet.hw, err = vpet:loadhardware('vv8.lua')
 	--vpet.hw, err = vpet:loadhardware('space.lua')
 	--vpet.hw, err = vpet:loadhardware('actionpet.lua')
+
+	DEBUG_PRINT_TABLE(vpet.hw)
 
 	if not vpet.hw then
 		print('Hardware failed to load with the following error:')
@@ -405,21 +407,21 @@ function vpet:drawHW(hw, x, y, scale, input)
 							love.graphics.draw(
 								unit.vram[subunit.page],
 								subunit.quad,
-								unit.w / 2 + subunit.x - subunit.w / 2,
-								unit.h / 2 + subunit.y - subunit.h / 2,
-								0, 1
+								unit.w / 2 + subunit.x - subunit.w / 2 * subunit.scalex,
+								unit.h / 2 + subunit.y - subunit.h / 2 * subunit.scaley,
+								0, subunit.scalex, subunit.scaley
 							)
 						elseif subunit.type == 'pixelimage' and subunit.quads then
 							local pixel = 0
 							local imagedata = unit.vram[0]:newImageData()
 							for qi, quad in ipairs(subunit.quads) do
-								pixel = self:closest_color_index(unit.colors, imagedata:getPixel(qi, 0))
+								pixel = self:closestColorIndex(unit.colors, imagedata:getPixel(qi, 0))
 								subunit.quad:setViewport(quad.x, quad.y + pixel * subunit.offset, quad.w, quad.h)
 								love.graphics.draw(
 									subunit.atlas,
 									subunit.quad,
-									unit.w / 2 + subunit.x + quad.x - unit.w / 2,
-									unit.h / 2 + subunit.y + quad.y - unit.h / 2,
+									unit.w / 2 + subunit.x + quad.x - unit.w / 2 * subunit.scalex,
+									unit.h / 2 + subunit.y + quad.y - unit.h / 2 * subunit.scaley,
 									0, 1
 								)
 							end
@@ -523,14 +525,14 @@ function vpet:setInput(button, pressed)
 			app:event('button', {button = button, up = not pressed, down = pressed})
 		end
 		if button == 'home' and pressed then
-			if #vpet.appstack > 0 then
+			if vpet.running then
 				api.vpet.quit()
 			end
 		end
 	end
 end
 
-function vpet:closest_color_index(colors, r, g, b, a)
+function vpet:closestColorIndex(colors, r, g, b, a)
 	if type(r) == 'table' then
 		r, g, b, a = unpack(r)
 	end
@@ -692,7 +694,7 @@ function vpet:loadforvram(image, lcd)
 			if a < 128 then
 				return 0, 0, 0, 0
 			else
-				r, g, b = unpack(lcd.colors[self:closest_color_index(lcd.colors, r, g, b, a)])
+				r, g, b = unpack(lcd.colors[self:closestColorIndex(lcd.colors, r, g, b, a)])
 				return r, g, b, 255
 			end
 		end
@@ -992,7 +994,7 @@ function vpet:loadhardware(file, dir)
 							else
 								if vpet.fallbackcolors[index] then
 									vpet.usedfallbackcolor(index)
-									return self.colors[vpet:closest_color_index(self.colors, vpet.fallbackcolors[index])]
+									return self.colors[vpet:closestColorIndex(self.colors, vpet.fallbackcolors[index])]
 								else
 									error('color ' .. tostring(index) .. ' does not exist', 2)
 								end
@@ -1035,7 +1037,13 @@ function vpet:loadhardware(file, dir)
 					local subunit
 					for i3, hw_subunit in ipairs(o) do
 						subunit = {type = hw_subunit.type}
-						if
+						subunit.scale = hw_subunit.scale or 1
+							-- so, with the two lines below, the subunit's scalex and scaley are made relative to the unit's scale
+							-- scalex, scaley, and/or scale are defined in hw files as absolute scale
+							-- additionally, is scale is defined and so is either scalex or scaley, then scale is multiplied by the others
+						subunit.scalex = hw_subunit.scalex and (hw_subunit.scalex / unit.scale) * subunit.scale or subunit.scale / unit.scale
+						subunit.scaley = hw_subunit.scaley and (hw_subunit.scaley / unit.scale) * subunit.scale or subunit.scale / unit.scale
+						if -- FIXME: this should not import all keys
 							subunit.type == 'dotmatrix' or
 							subunit.type == 'pixelimage' then
 								for key, value in pairs(hw_subunit) do
@@ -1154,12 +1162,88 @@ end
 
 -- Following are the functions and variables which can be accessed from within the script
 
--- Other hardware commands
+-- Hardware commands
+function api.hw.getInfo()
+	local enum = {}
+	local hw = vpet.hw
+	enum.info = {}
+	enum.output = {}
+	enum.input = {}
 
+	if hw.info then
+		enum.info.name = hw.info.name or ''
+		if hw.info.version then
+			enum.info.version = {}
+			for i = 1, 3 do
+				enum.info.version[i] = hw.info.version[i]
+			end
+		else
+			enum.info.version = {0, 0, 0}
+		end
+	end
+
+	if hw.output then
+		for i0, unit in ipairs(hw.output) do
+			enum.output[i0] = {}
+			enum.output[i0].type = unit.type
+			if unit.type == 'led' then
+			elseif unit.type == 'lcd' then
+				for i1, subunit in ipairs(unit) do
+					enum.output[i0][i1] = {}
+					enum.output[i0][i1].type = subunit.type
+					if subunit.type == 'dotmatrix' then
+						enum.output[i0][i1].w = subunit.w
+						enum.output[i0][i1].h = subunit.h
+					--elseif subunit.type == '' then
+						--enum.output[i0][i1].w = subunit.w
+						--enum.output[i0][i1].h = subunit.h
+					end
+				end
+			end
+		end
+	end
+
+	if hw.input then
+		if hw.input.buttons then
+			enum.input.buttons = {}
+			for name, _ in pairs(hw.input.buttons) do
+				enum.input.buttons[name] = true
+			end
+		end
+	end
+
+	return enum
+end
+
+function DEBUG_PRINT_TABLE(enum)
+	for k0, v0 in pairs(enum) do
+		print(k0, v0)
+		if type(v0) == 'table' then
+			for k1, v1 in pairs(v0) do
+				print(' ', k1, v1)
+				if type(v1) == 'table' then
+					for k2, v2 in pairs(v1) do
+						print(' ', ' ', k2, v2)
+						if type(v2) == 'table' then
+							for k3, v3 in pairs(v2) do
+								print(' ', ' ', ' ', k3, v3)
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+-- Old hardware commands, to be deprecated
+
+-- TODO: Deprecate
 function api.vpet.btn(button)
 	return vpet.input[button]
 end
 
+-- TODO: Deprecate
 function api.vpet.led(value, led)
 	led = led or vpet.hw.output.defaultled
 	if value ~= nil then
@@ -1168,6 +1252,7 @@ function api.vpet.led(value, led)
 	return led.on
 end
 
+-- TODO: Deprecate
 function api.vpet.loadpage(file, page, lcd)
 	local appstate = vpet.appstack:peek()
 	lcd = lcd or vpet.hw.output.defaultlcd
@@ -1208,15 +1293,19 @@ function api.vpet.subapp(appname, cansub)
 		api.draw.setColor(1, 0)
 		api.draw.setDest(0, 'screen')
 		api.draw.setSrc(0, 'screen')
+		local old_cansub = vpet.cansub
+		vpet.cansub = cansub
 		local ok
 		ok, appstate.app = pcall(appstate.chunk)
 		if not ok then
 			vpet.appstack:pop(appstate)
 			print('app failed to load')
+			vpet.cansub = old_cansub
 			return false, appstate.app
 		end
 		if type(appstate.app) ~= 'table' then
 			vpet.appstack:pop(appstate)
+			vpet.cansub = old_cansub
 			return false, 'app returned ' .. type(appstate.app) .. ' instead of table'
 		else
 			if not appstate.vram[1] then
@@ -1225,8 +1314,6 @@ function api.vpet.subapp(appname, cansub)
 			api.draw.setSrc(0, 'screen')
 			api.draw.setSrc(1, 'app')
 			api.draw.setColor(1, 0)
-		--if cansub then appstate.app.applist = vpet:listapps('apps/') end
-			vpet.cansub = cansub
 			return true
 		end
 	else
@@ -1259,7 +1346,7 @@ function api.vpet.quit()
 end
 
 function api.vpet.listapps()
-	if vpet.cansub then return vpet:listapps('apps/') else error() end
+	if vpet.cansub then return vpet:listapps('apps/') else error('App does not have permission to use listapps()') end
 end
 
 -- These are the new draw functions --------

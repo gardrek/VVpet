@@ -85,17 +85,9 @@ These are also subject to change.
 
 ## API
 
-Warning: This API is in early development, and is subject to change without warning. One change that will likely come is packaging it into a table, but that will be after some major reform.
+Warning: This API is in early development, and is subject to change without warning.
 
----
-`vpet.btn(button)`
-
-Returns a boolean representing whether the given button is held, or nil if the button does not exist.
-
----
-`vpet.loadpage(file, page, lcd)`
-
-Loads an image `file` into page number `page` for drawing onto `lcd`.
+Note: Currently, drawing from a source to itself is not supported.
 
 ---
 `draw.setColor(color, bgcolor)`
@@ -141,7 +133,7 @@ Colors a single pixel.
 ---
 `draw.blit(srcx, srcy, w, h, destx, desty)`
 
-copies a rectangle of pixels from one page to another (or the same)
+copies a rectangle of pixels from one page to another.
 
 TODO: explain this more
 
@@ -155,11 +147,6 @@ Draws string `str` at co-ordinates `x, y`. `align` is a number representing alig
 Draws a line from point `x0, y0` to point `x1, y1`.
 
 ---
-`vpet.led(on)`
-
-If `on` is given, turns the LED on for true and off for false. Either way, returns whether the LED is on.
-
----
 `vpet.subapp(appname, cansub)`
 
 Runs another app, suspending the running app. `appname` is the name of the app, not the file, so if your app is `'game.lua'` or `'game/app.lua'` then `appname` would be `'game'`.
@@ -168,6 +155,25 @@ Runs another app, suspending the running app. `appname` is the name of the app, 
 `vpet.quit()`
 
 Exits the app, returning to the calling app, if there is one.
+
+---
+The following commands will be depecated when the hw API is released:
+
+---
+`vpet.btn(button)`
+
+Returns a boolean representing whether the given button is held, or nil if the button does not exist.
+
+---
+`vpet.led(on)`
+
+If `on` is given, turns the LED on for true and off for false. Either way, returns whether the LED is on.
+
+---
+`vpet.loadpage(file, page, lcd)`
+
+Loads an image `file` into page number `page` for drawing onto `lcd`.
+
 
 
 ## Future work

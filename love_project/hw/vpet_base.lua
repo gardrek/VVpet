@@ -5,7 +5,6 @@
 -- all x, y co-ordinates are measured with the origin at the CENTER of the device
 
 local basedir = 'vpet/'
-local buttondir = basedir .. 'buttons/'
 
 local hw = {
 	-- available categories include: info, base, output, input

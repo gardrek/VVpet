@@ -1,4 +1,4 @@
--- This is not a full hardware, but rather some useful tools to use as a basais for construction of similar hardwware
+-- This is not a full hardware, but rather some useful tools to use as a basis for construction of similar hardware
 
 local api = {}
 
