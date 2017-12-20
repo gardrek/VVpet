@@ -1188,6 +1188,13 @@ function api.hw.getInfo()
 			enum.output[i0].type = unit.type
 			if unit.type == 'led' then
 			elseif unit.type == 'lcd' then
+				enum.output[i0].colors = #unit.colors + 1
+				if unit.colornames then
+					enum.output[i0].colornames = {}
+					for name, number in pairs(unit.colornames) do
+						enum.output[i0].colornames[name] = number
+					end
+				end
 				for i1, subunit in ipairs(unit) do
 					enum.output[i0][i1] = {}
 					enum.output[i0][i1].type = subunit.type
