@@ -1,4 +1,4 @@
-dofile('strict.lua')
+--dofile('strict.lua')
 
 local emu = {}
 local mouse = {}
@@ -12,8 +12,15 @@ local api = {}
 api.vpet = {}
 api.draw = {}
 api.hw = {}
+api.os = {
+	time = os.time,
+	date = os.date,
+	difftime = os.difftime,
+}
 
 local hwapi = {}
+
+--vpet.DEBUG = true
 
 function love.load()
 	-- Love set-up stuff
@@ -31,6 +38,7 @@ function love.load()
 		y = 0,
 		imagefile = 'bg.jpg',
 	}
+	emu.guiButtons = {}
 
 	if love.filesystem.exists(emu.bg.imagefile) then
 		emu.bg.image = love.graphics.newImage(emu.bg.imagefile)
@@ -128,17 +136,14 @@ function love.load()
 
 	-- load hardware --------
 
-	-- FIXME: each instance should have its own PRNG state, or at the very least not be able to call math.randomseed()
-	math.randomseed(os.time())
-
 	---[[
 	local err
-	--vpet.hw, err = vpet:loadhardware('bad.lua')
-	vpet.hw, err = vpet:loadhardware('vpet64.lua')
-	--vpet.hw, err = vpet:loadhardware('vpet64icon.lua')
-	--vpet.hw, err = vpet:loadhardware('vv8.lua')
-	--vpet.hw, err = vpet:loadhardware('space.lua')
-	--vpet.hw, err = vpet:loadhardware('actionpet.lua')
+	--vpet.hw, err = vpet:loadHW('bad.lua')
+	vpet.hw, err = vpet:loadHW('vpet64.lua')
+	--vpet.hw, err = vpet:loadHW('vpet64icon.lua')
+	--vpet.hw, err = vpet:loadHW('vv8.lua')
+	--vpet.hw, err = vpet:loadHW('space.lua')
+	--vpet.hw, err = vpet:loadHW('actionpet.lua')
 
 	DEBUG_PRINT_TABLE(vpet.hw)
 
@@ -147,7 +152,13 @@ function love.load()
 		print(err)
 		error()
 	end
+
+	vpet:initHW(emu)
 	--]]
+
+	emu.guiButtons['TEST_BUTTON'] = {
+		x1 = 300, y1 = 100, x2 = 500, y2 = 200
+	}
 
 	-- FIXME: Setting the window mode sometimes clears canvases
 	--emu:setMinGeometry(vpet.hw)
@@ -191,19 +202,30 @@ function love.load()
 	vpet.running = true
 	--]]
 
-	--[[vpet.hwchoices = {
-		vpet:loadhardware('vpet64.lua'),
-		vpet:loadhardware('vpet48.lua'),
-		vpet:loadhardware('vpet_supertest.lua'),
-		vpet:loadhardware('vv8.lua'),
-		vpet:loadhardware('space.lua'),
-		vpet:loadhardware('bigpet.lua'),
-		vpet:loadhardware('vvboy.lua'),
-	}]]
+	---[[
+	local hwnames = {
+		'vpet64.lua',
+		'actionpet.lua',
+		'vv8.lua',
+		'space.lua',
+		'vpet64icon.lua',
+	}
+	vpet.hwchoices = {}
+
+	local hw, err
+	for i, name in ipairs(hwnames) do
+		hw, err = vpet:loadHW(name)
+		if hw then
+			table.insert(vpet.hwchoices, hw)
+		else
+			print(err)
+		end
+	end
+	--]]
 end
 
 function love.update(dt)
-	vpet:updatemousecheap()
+	emu:updatemousecheap()
 	if vpet.running then
 		local appstate = vpet.appstack:peek()
 		local app = appstate.app
@@ -241,34 +263,51 @@ function love.update(dt)
 	end
 end
 
-function vpet:updatemousecheap()
+function emu:updatemousecheap()
 	local x1, y1, x2, y2
 	mouse.last_x, mouse.last_y = mouse.x, mouse.y
 	mouse.x, mouse.y = love.mouse.getPosition()
 	local was_pressed = mouse.down
 	mouse.down = love.mouse.isDown(1)
-	for key, obj in pairs(vpet.hw.input.buttons) do
-		x1, y1, x2, y2 =
-			emu.center.x + (obj.x * vpet.hw.base.scale - obj.w / 2 * obj.scale) * emu.scale,
-			emu.center.y + (obj.y * vpet.hw.base.scale - obj.h / 2 * obj.scale) * emu.scale,
-			emu.center.x + (obj.x * vpet.hw.base.scale + obj.w / 2 * obj.scale) * emu.scale,
-			emu.center.y + (obj.y * vpet.hw.base.scale + obj.h / 2 * obj.scale) * emu.scale
-		if mouse.x <= x2 and mouse.x > x1 and mouse.y <= y2 and mouse.y > y1 then
+
+	if vpet.hw then
+		for key, obj in pairs(vpet.hw.input.buttons) do
+			x1, y1, x2, y2 =
+				self.center.x + (obj.x * vpet.hw.base.scale - obj.w / 2 * obj.scale) * self.scale,
+				self.center.y + (obj.y * vpet.hw.base.scale - obj.h / 2 * obj.scale) * self.scale,
+				self.center.x + (obj.x * vpet.hw.base.scale + obj.w / 2 * obj.scale) * self.scale,
+				self.center.y + (obj.y * vpet.hw.base.scale + obj.h / 2 * obj.scale) * self.scale
+			local b = emu.guiButtons['hw_btn_' .. key]
+			b.x1, b.y1, b.x2, b.y2 = x1, y1, x2, y2
+			b.key = key -- TODO: fix this hackiness
+		end
+	end
+
+	for name, btn in pairs(emu.guiButtons) do
+		if not mouse.down then btn.pressed = false end
+		if mouse.x <= btn.x2 and mouse.x > btn.x1 and mouse.y <= btn.y2 and mouse.y > btn.y1 then
 			if mouse.down and not was_pressed then
-				mouse.pressed_key = key
+				mouse.pressed_key = btn.key
 				mouse.pressed = true
+				btn.pressed = true
 			end
 		end
 	end
+
 	if mouse.pressed then
-		vpet:setInput(mouse.pressed_key, true)
+		if mouse.pressed_key then
+			vpet:setInput(mouse.pressed_key, true)
+		end
 		mouse.pressed = false
 	elseif was_pressed and not mouse.down and mouse.pressed_key then
-		vpet:setInput(mouse.pressed_key, false)
+		if mouse.pressed_key then
+			vpet:setInput(mouse.pressed_key, false)
+		end
 	end
 end
 
-function vpet:updatemouse()
+--[[
+function updatemouse()
 	local x1, y1, x2, y2
 	local was_hovering = mouse.hovering
 	mouse.hovering = false
@@ -310,6 +349,7 @@ function vpet:updatemouse()
 	end
 	print(mouse.hover_key, mouse.pressed_key, mouse.holding)
 end
+--]]
 
 function love.draw()
 	if vpet.running then
@@ -329,17 +369,59 @@ function love.draw()
 		0, emu.bg.scale
 	)
 
-	vpet:drawHW(vpet.hw, emu.center.x, emu.center.y, emu.scale)
+	if vpet.hw then
+		vpet:drawHW(vpet.hw, emu.center.x, emu.center.y, emu.scale, vpet.input)
+	else
+		local x, y, scale
+		local offset = -love.graphics.getWidth() / 3
+		for i, hw in ipairs(vpet.hwchoices) do
+			x, y = emu.center.x + offset, emu.center.y
+			scale = love.graphics.getHeight() / hw.base.h / 3
+			love.graphics.setColor(vpet.fallbackcolors['Orange'])
+			love.graphics.rectangle('line',
+				x + hw.base.x * scale,
+				y + hw.base.y * scale,
+				hw.base.w * scale,
+				hw.base.h * scale
+			)
+			love.graphics.setColor(vpet.const.imageColor)
+			vpet:drawHW(hw, x, y, scale / hw.base.image_scale / hw.base.scale)
+			offset = offset + scale * 150 -- (-hw.base.x + (hw.base.w * hw.base.w) / hw.base.h) * (scale / hw.base.image_scale / hw.base.scale)
+			--(hw.base.w + hw.base.x) * (scale) * 2
+		end
+	end
 
 	if vpet.DEBUG then
 		if vpet.hw and vpet.hw.output and vpet.hw.output.defaultlcd then
 			love.graphics.setColor(vpet.const.imageColor)
 			love.graphics.draw(
-				vpet.hw.output.defaultlcd.vram[0],
+				--vpet.hw.output.defaultlcd.vram[0],
+				vpet.hw.output.defaultlcd.screenCanvas,
 				0, 0,
 				0, emu.scale
 			)
+
+			love.graphics.setColor(vpet.fallbackcolors['Orange'])
+			love.graphics.rectangle('line',
+				emu.center.x + vpet.hw.base.x * emu.scale * vpet.hw.base.scale * vpet.hw.base.image_scale,
+				emu.center.y + vpet.hw.base.y * emu.scale * vpet.hw.base.scale * vpet.hw.base.image_scale,
+				vpet.hw.base.w * emu.scale * vpet.hw.base.scale * vpet.hw.base.image_scale,
+				vpet.hw.base.h * emu.scale * vpet.hw.base.scale * vpet.hw.base.image_scale
+			)
 		end
+
+		for name, v in pairs(emu.guiButtons) do
+			if v.pressed then
+				love.graphics.setColor(vpet.fallbackcolors['Pink'])
+			else
+				love.graphics.setColor(vpet.fallbackcolors['Cyan'])
+			end
+			love.graphics.rectangle('line', v.x1, v.y1, v.x2 - v.x1, v.y2 - v.y1)
+			--love.graphics.setColor(vpet.const.imageColor)
+			love.graphics.print(name, v.x1 + 2, v.y1 + 2)
+		end
+
+		--[[
 		local x, y, w, h, index
 		h = love.graphics.getHeight() / 20
 		w = h
@@ -351,12 +433,11 @@ function love.draw()
 			love.graphics.rectangle('fill', x, y, w, h)
 			index = index + 1
 		end
+		--]]
 	end
 end
 
 function vpet:drawHW(hw, x, y, scale, input)
-	input = input or self.input
-
 		-- Draw the hardware base/background/shell
 	if hw.base.image then
 		love.graphics.draw(
@@ -371,7 +452,11 @@ function vpet:drawHW(hw, x, y, scale, input)
 	if hw.input and hw.input.buttons then
 		local image
 		for k,v in pairs(hw.input.buttons) do
-			image = input[k] and v.image_down or v.image_up or v.image
+			if input then
+				image = input[k] and v.image_down or v.image_up or v.image
+			else
+				image = v.image_up or v.image
+			end
 			if image then
 				love.graphics.draw(
 					image,
@@ -443,7 +528,6 @@ end
 
 function love.keypressed(key, scancode, isrepeat)
 	if not isrepeat then
-		--if vpet.DEBUG then print(key, 'pressed') end
 		if key == 'f7' then
 			vpet.DEBUG = not vpet.DEBUG
 		elseif key == '-' then
@@ -667,7 +751,7 @@ function vpet:newpage(image, lcd)
 	return page
 end
 
-function vpet:loadImage1bit(image)
+function vpet:load1bitImage(image)
 	if type(image) == 'string' then
 		image = love.graphics.newImage(image)
 	end
@@ -807,7 +891,7 @@ function vpet:listapps(dir)
 	return list
 end
 
-function vpet:loadhardware(file, dir)
+function vpet:loadHW(file, dir)
 	dir = dir or hwapi.getDir()
 
 	local success, hw = pcall(vpet:loadscript(dir..file, self:newEnv(hwapi)))
@@ -1015,7 +1099,7 @@ function vpet:loadhardware(file, dir)
 					end
 					unit.vram.font = love.graphics.newCanvas(unit.vram.w, unit.vram.h)
 					if type(o.vram.font) == 'string' and love.filesystem.exists(dir .. o.vram.font) then
-						local image = vpet:loadImage1bit(dir .. o.vram.font)
+						local image = vpet:load1bitImage(dir .. o.vram.font)
 						love.graphics.setColor(vpet.const.imageColor)
 						unit.vram.font:renderTo(function()
 							love.graphics.draw(image)
@@ -1031,6 +1115,11 @@ function vpet:loadhardware(file, dir)
 					unit.shadowCanvasBack:renderTo(function()
 						love.graphics.setColor(unit.bgcolor)
 						love.graphics.rectangle('fill', 0, 0, unit.w, unit.h)
+					end)
+					unit.shadowCanvasFront:renderTo(function()
+						love.graphics.clear({0, 0, 0, 0})
+						love.graphics.draw(unit.screenCanvas)
+						love.graphics.draw(unit.shadowCanvasBack)
 					end)
 					unit.frametime = 0
 					-- TODO: Handle backlight here
@@ -1092,7 +1181,7 @@ function vpet:loadhardware(file, dir)
 		end
 	end
 
-	---[[FIXME: remove or use this code
+	--[[FIXME: remove or use this code
 	local geometry_default = {
 		--x = 0, y = 0,
 		--w = 8, h = 8,
@@ -1118,6 +1207,25 @@ function vpet:loadhardware(file, dir)
 	--]]
 
 	return finish(loaded)
+end
+
+function vpet:initHW(emu)
+	local hw = vpet.hw
+	--hw.input.array = {} -- TODO: move vpet.input onto the hardware. not sure what to name it tho...
+	for key, obj in pairs(hw.input.buttons) do
+		emu.guiButtons['hw_btn_' .. key] = {}
+		hw.input[key] = false
+	end
+end
+
+function vpet:stopHW(emu)
+	local hw = vpet.hw
+	vpet.hw = nil
+	--hw.input.array = nil -- TODO: move vpet.input onto the hardware. not sure what to name it tho...
+	for key, obj in pairs(hw.input.buttons) do
+		emu.guiButtons['hw_btn_' .. key] = nil
+	end
+	return hw
 end
 
 function select_vram_page(page, lcd)
@@ -1329,7 +1437,7 @@ function api.vpet.subapp(appname, cansub)
 end
 
 function api.vpet.quit()
-	if not vpet.running then error'' end
+	if not vpet.running then error'' end -- Should not be necessary; running api.* functions should be disallowed whenan app is not running
 	local appstate = vpet.appstack:peek()
 	local app = appstate.app
 	if app then
