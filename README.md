@@ -1,5 +1,7 @@
 # VVpet
 
+![VVpet logo](/logo.png)
+
 ![Animated image of VVpet running](/vPET64-demo.gif)
 
 VVpet is a system for making and playing virtual LCD games. VVpet is not just one fantasy console, but more like a set of related fantasy consoles. It also allows one to easily make their own fantasy consoles, as well as games for those consoles.
