@@ -1,6 +1,6 @@
 # VVpet
 
-![Animated image of VVpet running](https://i.imgur.com/vhCwHG2.gif)
+![Animated image of VVpet running](/vPET64-demo.gif)
 
 VVpet is a system for making and playing virtual LCD games. VVpet is not just one fantasy console, but more like a set of related fantasy consoles. It also allows one to easily make their own fantasy consoles, as well as games for those consoles.
 
@@ -121,9 +121,9 @@ If `color` is given, clears the main screen to that color, if not, clears it to 
 
 Fills a rectangle with a single color.
 
-`x` and `y`  default to `0`.
+`x` and `y` default to `0`.
 
-`w` and `h`  default to the width and height of the screen, respectively.
+`w` and `h` default to the width and height of the screen, respectively.
 
 ---
 `draw.pix(x, y)`
