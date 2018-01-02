@@ -7,8 +7,8 @@ function api.newDotMatrixLCD(x, y, w, h, border)
 		type = 'lcd',
 		x = x,
 		y = y,
-		w = w + border,
-		h = h + border,
+		w = w + border * 2,
+		h = h + border * 2,
 		bgcolor = {0xee, 0xee, 0xee},
 		colors = {
 			[0] = {0xdd, 0xdd, 0xdd},

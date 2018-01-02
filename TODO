@@ -53,6 +53,10 @@ Bug Fixes/Glaring Problems:
 Small things:
   √ Stop from changing to a cozy level which would give a smaller scale than the lowest
     - improvement: allow cozy level to be higher than max, but don't _change to_ a cozy level higher than max
+  - Allow LEDs to colorize an image instead of having separate on/off images
+    - Some way to distinguish LEDs.
+      - Could allow access to the color from within script somehow?
+      - names? location? suggested use, e.g: battery, message, disk, etc
 
 Way in the future plans
   - Add BitOp binary operators

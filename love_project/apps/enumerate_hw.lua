@@ -21,7 +21,7 @@ local function hw2strings(enum, hwstrings, depth)
 	return hwstrings
 end
 
-print('===== enumerate hardware ====')
+print('==== enumerate hardware ====')
 
 local hwstrings = hw2strings()
 
@@ -56,7 +56,7 @@ local offset = 0
 
 local t = os.time()
 
-function game.draw()
+function game:draw()
 	draw.cls()
 	for i, v in ipairs(hwstrings) do
 		draw.text(v, 1, (i - 1) * 8 + math.floor(offset) * 8)
