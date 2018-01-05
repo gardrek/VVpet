@@ -98,7 +98,7 @@ local hw = {
 
 local api = inherithw(hwdir .. 'base.lua')
 
-local lcd = api.newDotMatrixLCD(0, -6, main_screen.w, main_screen.h, 8)
+local lcd = api.newDotMatrixLCD(0, -6, main_screen.w, main_screen.h, 4)
 
 lcd.vram.font = 'font.png'
 

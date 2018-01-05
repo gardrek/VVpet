@@ -1,4 +1,6 @@
 --dofile('strict.lua')
+dofile('noglobals.lua')
+--rawset(_G, '_ALLOWGLOBALS', true)
 
 local emu = {}
 local mouse = {}
@@ -20,6 +22,51 @@ api.os = {
 }
 
 local hwapi = {}
+
+function love.run()
+	local TICKRATE = 1 / 60
+
+	if love.math then
+		love.math.setRandomSeed(os.time())
+	end
+
+	if love.load then love.load(arg) end
+
+	local previous = love.timer.getTime()
+	local lag = 0.0
+	while true do
+		local current = love.timer.getTime()
+		local elapsed = current - previous
+		previous = current
+		lag = lag + elapsed
+
+		if love.event then
+			love.event.pump()
+			for name, a, b, c, d, e, f in love.event.poll() do
+				if name == 'quit' then
+					if not love.quit or not love.quit() then
+						return a
+					end
+				end
+				love.handlers[name](a, b, c, d, e, f)
+			end
+		end
+
+		while lag >= TICKRATE do
+			if love.update then love.update(TICKRATE) end
+			lag = lag - TICKRATE
+		end
+
+		if love.graphics and love.graphics.isActive() then
+			love.graphics.clear(love.graphics.getBackgroundColor())
+			love.graphics.origin()
+			-- The new argument to love.draw is the percentage of the last tick that is left over
+			-- Not sure what to use it for, but the app draw functions don't even use love.draw, so it doesn't much matter
+			if love.draw then love.draw(lag / TICKRATE) end
+			love.graphics.present()
+		end
+	end
+end
 
 function love.load(arg)
 	--[[
@@ -223,7 +270,7 @@ function love.load(arg)
 	for i, name in ipairs(hwnames) do
 		hw, err = vpet:loadHW(name)
 		if hw then
-			table.insert(vpet.hwchoices, hw)
+			table.insert(vpet.hwchoices, {hw = hw})
 			---[[
 			emu.guiButtons['hw_selector_' .. hw.info.name] = {
 				x1 = -1, x2 = -1, y1 = -1, y2 = -1,
@@ -240,6 +287,17 @@ function love.load(arg)
 			print(err)
 		end
 	end
+
+	local canvas, scale
+	for i, v in ipairs(vpet.hwchoices) do
+		scale = v.hw.base.scale
+		canvas = love.graphics.newCanvas(v.hw.base.w * scale, v.hw.base.h * scale)
+		canvas:renderTo(function()
+			vpet:drawHW(v.hw, math.floor(v.hw.base.w / 2) * scale, math.floor(v.hw.base.h / 2) * scale, 1)
+		end)
+		v.image = love.graphics.newImage(canvas:newImageData())
+		v.image:setFilter('linear', 'linear')
+	end
 	--]]
 end
 
@@ -250,6 +308,9 @@ function love.update(dt)
 		local app = appstate.app
 		if app.update and type(app.update) == 'function' then
 			app:update(dt)
+		end
+		if app.draw and type(app.draw) == 'function' then
+			app:draw()
 		end
 	end
 	-- Simulate LCD ghosting.
@@ -386,14 +447,6 @@ end
 --]]
 
 function love.draw()
-	if vpet.running then
-		local appstate = vpet.appstack:peek()
-		local app = appstate.app
-		if app.draw and type(app.draw) == 'function' then
-			app:draw()
-		end
-	end
-
 	-- scenery background image
 	love.graphics.setColor(vpet.const.imageColor)
 	love.graphics.draw(
@@ -411,16 +464,19 @@ function love.draw()
 		local offset = -love.graphics.getHeight() / 3 * 2
 			- love.graphics.getHeight() / 3 * (vpet.input['left'] and 1 or 0)
 			+ love.graphics.getHeight() / 3 * (vpet.input['right'] and 1 or 0)
-		for i, hw in ipairs(vpet.hwchoices) do
-			x, y = emu.center.x + offset, emu.center.y
+		local hw
+		for i, hwchoice in ipairs(vpet.hwchoices) do
+			hw = hwchoice.hw
+			x, y = emu.center.x + offset, emu.center.y - line_h / 2
 			scale = line_h / hw.base.h
 			hwscale = scale / hw.base.image_scale / hw.base.scale
 			love.graphics.setColor(vpet.const.imageColor)
-			vpet:drawHW(hw, x + hw.base.w / 2 * scale, y, hwscale)
+			--vpet:drawHW(hw, x + hw.base.w / 2 * scale, y, hwscale)
+			love.graphics.draw(hwchoice.image, x, y, 0, hwscale)
 			emu.guiButtons['hw_selector_' .. hw.info.name].x1 = x
-			emu.guiButtons['hw_selector_' .. hw.info.name].y1 = y - hw.base.h / 2 * scale
+			emu.guiButtons['hw_selector_' .. hw.info.name].y1 = y
 			emu.guiButtons['hw_selector_' .. hw.info.name].x2 = x + hw.base.w * scale
-			emu.guiButtons['hw_selector_' .. hw.info.name].y2 = y + hw.base.h / 2 * scale
+			emu.guiButtons['hw_selector_' .. hw.info.name].y2 = y + line_h --hw.base.h * scale
 			offset = offset + hw.base.w * scale + spacing
 		end
 	end
@@ -1324,7 +1380,8 @@ function vpet:stopHWselector()
 	end
 end
 
-function select_vram_page(page, lcd)
+--[[
+function vpet:select_vram_page(page, lcd)
 	local lcd_raw = lcd
 	if type(lcd) == 'number' then
 		lcd = vpet.hw.output[lcd]
@@ -1344,6 +1401,7 @@ function select_vram_page(page, lcd)
 	end
 	return page, lcd
 end
+--]]
 
 -- These functions are used within hardware description files
 
@@ -1426,6 +1484,7 @@ function api.hw.getInfo()
 	return enum
 end
 
+--[[
 function DEBUG_PRINT_TABLE(enum)
 	for k0, v0 in pairs(enum) do
 		print(k0, v0)
@@ -1446,6 +1505,7 @@ function DEBUG_PRINT_TABLE(enum)
 		end
 	end
 end
+--]]
 
 -- Old hardware commands, to be deprecated
 

@@ -12,6 +12,8 @@ function game:update(dt)
   tick1 = tick1 + 1
 end
 
+local tick708 = false
+
 function game:draw()
   draw.cls(0)
   draw.text(tick0, 1, 0)
@@ -31,9 +33,13 @@ function game:draw()
     draw.rect(60 - 4, 60, 4, 4)
   end
   --]]
-  if tick1 % 2 == 0 then
+  --if tick1 % 2 == 0 then
+    --draw.rect(60 - 4, 60, 4, 4)
+  --end
+  if tick708 then
     draw.rect(60 - 4, 60, 4, 4)
   end
+  tick708 = not tick708
   draw.rect(60, 60, 4, 4)
 end
 
