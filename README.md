@@ -56,7 +56,7 @@ Below is a small sample program illustrating this. Note the `table:method` synta
     local bgcolor = 0
 
     function game:draw()
-      vpet.cls(bgcolor)
+      draw.cls(bgcolor)
     end
 
     function game:event(type, data)
@@ -73,7 +73,11 @@ Below is a small sample program illustrating this. Note the `table:method` synta
 
 The following are the available callback functions: `draw()`, `update(dt)`, `event(type, data)`, `quit()`
 
-This is called when an event happens. The event types are:
+`update()` is run every 1/60th of a second.
+
+`draw()` is deprecated, but it runs every 1/60th of a second, right after `update()`
+
+`event(type, data)` is called when an event happens. The event types are:
 
 `'button'`
 
@@ -81,9 +85,19 @@ This event is triggered when a button is pressed or released. The data table has
 
 `'quit'`
 
-This even is triggered when the app stops running. The data structure is empty in the current version
+This event is triggered when the app stops running. The data structure is empty in the current version
 
 These are also subject to change.
+
+`quit()` is called when the app finishes running.
+
+When an app exits, the following happens, in this order:
+
+1. the `'quit'` event is called for `app:event()` if it exists
+2. `app:quit()` is called, if it exists
+3. the app actually exits
+
+nothing happens between any of these steps
 
 ## API
 
@@ -149,20 +163,20 @@ Draws string `str` at co-ordinates `x, y`. `align` is a number representing alig
 Draws a line from point `x0, y0` to point `x1, y1`.
 
 ---
-`vpet.subapp(appname, cansub)`
+`os.subapp(appname, cansub)`
 
 Runs another app, suspending the running app. `appname` is the name of the app, not the file, so if your app is `'game.lua'` or `'game/app.lua'` then `appname` would be `'game'`.
 
 ---
-`vpet.quit()`
+`os.quit()`
 
-Exits the app, returning to the calling app, if there is one.
-
----
-The following commands will be depecated when the hw API is released:
+Exits the app, returning to the calling app, if there is one. See above for what happens when an app exits.
 
 ---
-`vpet.btn(button)`
+The following commands will be depecated when the hw API is more mature:
+
+---
+`hw.btn(button)`
 
 Returns a boolean representing whether the given button is held, or nil if the button does not exist.
 

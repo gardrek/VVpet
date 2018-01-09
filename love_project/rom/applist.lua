@@ -2,7 +2,6 @@ local game = {}
 
 local cursor = {
 	index = 1,
-	text = string.char(2) .. string.char(3),
 }
 
 local drawcursor = false
@@ -11,8 +10,7 @@ local cursor_blink = 0
 
 local scroll = 0
 
-
-game.applist = vpet.listapps() -- is no longer injected by the emulator because that was bad mmkay
+game.applist = os.listapps()
 
 game.status = 'Select an app to run'
 game.status_scroll = 64
@@ -83,7 +81,7 @@ function game:event(type, data)
 		cursor_blink = 0
 		if self.applist and #self.applist ~= 0 then
 			if button == '2' then
-				local ok, message = vpet.subapp(self.applist[cursor.index].name, false)
+				local ok, message = os.subapp(self.applist[cursor.index].name, false)
 				if ok then
 					message = 'Loaded subapp '..self.applist[cursor.index].name
 				end
