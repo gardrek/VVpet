@@ -120,7 +120,7 @@ function vpet:setInput(button, pressed)
 		self.input[button] = pressed
 		-- TODO: refactor this to be a check into a table of declared functions, maybe?
 		if app and type(app.event) == 'function' then
-			app:event('button', {button = button, up = not pressed, down = pressed})
+			app:callback('event', 'button', {button = button, up = not pressed, down = pressed})
 		end
 		if button == 'home' and pressed then
 			if vpet.running then

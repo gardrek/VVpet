@@ -284,15 +284,9 @@ function love.update(dt)
 	if vpet.running then
 		local appstate = vpet.appstack:peek()
 		local app = appstate.app
-		if app.tick and type(app.tick) == 'function' then
-			app:tick()
-		end
-		if app.update and type(app.update) == 'function' then
-			app:update(dt)
-		end
-		if app.draw and type(app.draw) == 'function' then
-			app:draw()
-		end
+		app:callback('tick')
+		app:callback('update', dt)
+		app:callback('draw')
 	end
 	-- Simulate LCD ghosting.
 	--[[ Process:

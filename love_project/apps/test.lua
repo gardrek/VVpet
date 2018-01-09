@@ -13,6 +13,7 @@ return {
     end
   end,
   event = function(self, type, data)
+    qbert[1] = 1 -- o noes error
     if type == 'button' and data.down then
       if data.button == 'left' then
         self.x = self.x - 1

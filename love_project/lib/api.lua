@@ -139,6 +139,17 @@ function api.os.subapp(appname, cansub)
 			vpet.cansub = old_cansub
 			return false, appstate.app
 		end
+		if not appstate.app.callback then
+			function appstate.app:callback(func, ...)
+				if type(self[func]) == 'function' then
+					local ok, err = pcall(self[func], self, ...)
+					if not ok then
+						print(err)
+						--api.os.quit() -- obviously causes a stack overflow, hmm
+					end
+				end
+			end
+		end
 		if type(appstate.app) ~= 'table' then
 			vpet.appstack:pop(appstate)
 			vpet.cansub = old_cansub
@@ -158,16 +169,14 @@ function api.os.subapp(appname, cansub)
 end
 
 function api.os.quit()
-	if not vpet.running then error'' end -- Should not be necessary; running api.* functions should be disallowed whenan app is not running
+	if not vpet.running then error'' end -- Should not be necessary; running api.* functions should be disallowed whenan app is not running, or maybe in general, hm
 	local appstate = vpet.appstack:peek()
 	local app = appstate.app
 	if app then
-		if type(app.event) == 'function' then
-			app:event('quit', {})
-		end
-		if type(app.quit) == 'function' then
-			app.quit()
-		end
+		app:callback('event', 'quit', {})
+		app:callback('quit')
+	else
+		print('api.os.quit with no app')
 	end
 	if #vpet.appstack > 1 then
 		-- there's another app on the stack, so return to it
