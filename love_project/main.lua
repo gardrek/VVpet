@@ -9,7 +9,7 @@ hwapi = {}
 
 -- this stops you from (accidentally) assigning new globals after this point
 -- you can still use rawset, tho
-dofile('lib/noglobals.lua')
+--dofile('lib/noglobals.lua')
 -- TODO: should it also cause an error on _access_ of unassigned globals?
 
 -- this global controls whether you can set globals with a simple assignment
