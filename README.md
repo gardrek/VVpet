@@ -1,6 +1,6 @@
 # VVpet
 
-![VVpet logo](/logo.png)
+![VVpet logo icon](/love_project/icon.png)
 
 ![Animated image of VVpet running](/vPET64-demo.gif)
 
@@ -196,4 +196,4 @@ Loads an image `file` into page number `page` for drawing onto `lcd`.
 
 Virtual hardware specification files are included, and the comments in those files provide enough documentation to make your own hardware. However, this is not documented in this README as it is subject to change. The hardware loading function is full of assumptions and errors waiting to happen. Modify hardware with caution.
 
-![Icon image](/love_project/icon.png)
+![Pixel art VVpet wordart](/logo.png)
