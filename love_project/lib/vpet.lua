@@ -21,8 +21,22 @@ function vpet.appstack:peek(i)
 	return self[#self - i]
 end
 
-function vpet.appstack:terminate()
-  
+function vpet:terminate()
+	if not vpet.running then error('terminate called with no app running') end
+	local appstate = vpet.appstack:peek()
+	local app = appstate.app
+	if #vpet.appstack > 1 then
+		-- there's another app on the stack, so return to it
+		vpet.appstack:pop()
+		vpet.cansub = true
+	else
+		-- there's no more apps on the stack, so restart this one
+		local callback = app.callback -- FIXME: ugly hack or pure genius?
+		local ok
+		ok, appstate.app = pcall(appstate.chunk)
+		appstate.app.callback = appstate.app.callback or callback
+		if not ok then error('woops, app couldn\'t reset??') end
+	end
 end
 
 function vpet:drawHW(hw, x, y, scale, input)

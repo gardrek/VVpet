@@ -145,7 +145,7 @@ function api.os.subapp(appname, cansub)
 					local ok, err = pcall(self[func], self, ...)
 					if not ok then
 						print(err)
-						--api.os.quit() -- obviously causes a stack overflow, hmm
+						vpet:terminate()
 					end
 				end
 			end
@@ -178,18 +178,7 @@ function api.os.quit()
 	else
 		print('api.os.quit with no app')
 	end
-	if #vpet.appstack > 1 then
-		-- there's another app on the stack, so return to it
-		vpet.appstack:pop()
-		vpet.cansub = true
-	else
-		-- there's no more apps on the stack, so restart this one
-		local callback = app.callback -- FIXME: ugly hack or pure genius?
-		local ok
-		ok, appstate.app = pcall(appstate.chunk)
-		appstate.app.callback = appstate.app.callback or callback
-		if not ok then error('woops, app couldn\'t reset??') end
-	end
+	vpet:terminate()
 end
 
 function api.os.listapps()

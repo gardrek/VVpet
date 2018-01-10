@@ -75,7 +75,6 @@ function game:update(dt)
 end
 
 function game:event(type, data)
-	---[[
 	if type == 'button' and data.down then
 		local button = data.button
 		cursor_blink = 0
@@ -99,7 +98,6 @@ function game:event(type, data)
 			end
 		end
 	end
-	--]]
 end
 
 return game

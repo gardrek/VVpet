@@ -18,6 +18,8 @@ function love.conf(t)
 	t.window.x = nil                    -- The x-coordinate of the window's position in the specified display (number)
 	t.window.y = nil                    -- The y-coordinate of the window's position in the specified display (number)
 
+	t.console = true                    -- May be necessary for some platforms in order to see messages printed to the console
+
 	t.modules.audio = true              -- Enable the audio module (boolean)
 	t.modules.event = true              -- Enable the event module (boolean)
 	t.modules.graphics = true           -- Enable the graphics module (boolean)
