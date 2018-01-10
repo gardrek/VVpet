@@ -184,8 +184,10 @@ function api.os.quit()
 		vpet.cansub = true
 	else
 		-- there's no more apps on the stack, so restart this one
+		local callback = app.callback -- FIXME: ugly hack or pure genius?
 		local ok
 		ok, appstate.app = pcall(appstate.chunk)
+		appstate.app.callback = appstate.app.callback or callback
 		if not ok then error('woops, app couldn\'t reset??') end
 	end
 end

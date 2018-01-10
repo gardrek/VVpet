@@ -21,6 +21,10 @@ function vpet.appstack:peek(i)
 	return self[#self - i]
 end
 
+function vpet.appstack:terminate()
+  
+end
+
 function vpet:drawHW(hw, x, y, scale, input)
 		-- Draw the hardware base/background/shell
 	if hw.base.image then
