@@ -1,9 +1,10 @@
 local vpet = {}
 
 vpet.const = {}
-vpet.const.ghosting = 0x77
-vpet.const.imageColor = {0xff, 0xff, 0xff, 0xff}
+vpet.const.ghosting = 0x77 / 0xff
+vpet.const.imageColor = {1, 1, 1, 1}
 vpet.const.debug = false
+vpet.const.verbose = false
 
 -- app stack --------
 vpet.appstack = {}
@@ -30,12 +31,15 @@ function vpet:terminate()
 		vpet.appstack:pop()
 		vpet.cansub = true
 	else
+		--[[
 		-- there's no more apps on the stack, so restart this one
 		local callback = app.callback -- FIXME: ugly hack or pure genius?
 		local ok
 		ok, appstate.app = pcall(appstate.chunk)
-		appstate.app.callback = appstate.app.callback or callback
 		if not ok then error('woops, app couldn\'t reset??') end
+		appstate.app.callback = appstate.app.callback or callback
+		appstate.app:callback('init')
+		--]]
 	end
 end
 
@@ -283,11 +287,44 @@ function vpet:newpage(image, lcd)
 	return page
 end
 
+function vpet:loadImage(image, lcd, callback)
+	local raw = love.image.newImageData(image)
+	if callback then raw:mapPixel(callback) end
+	return love.graphics.newImage(raw)
+end
+
 function vpet:load1bitImage(image)
+	return vpet:loadImage(image, nil,
+		function(x, y, r, g, b, a)
+			if a < 0.5 or r + g + b <= 1.5 then
+				return 0, 0, 0, 0
+			else
+				return 1, 1, 1, 1
+			end
+		end
+	)
+end
+
+function vpet:loadforvram(image, lcd)
+	return vpet:loadImage(image, lcd,
+		function(x, y, r, g, b, a)
+			if a < 0.5 then
+				return 0, 0, 0, 0
+			else
+				r, g, b = unpack(lcd.colors[self:closestColorIndex(lcd.colors, r, g, b, a)])
+				return r, g, b, 1
+			end
+		end
+	)
+end
+
+--FIXME: DELETEME:
+function vpet:load1bitImage_OLD(image)
+	local raw
 	if type(image) == 'string' then
-		image = love.graphics.newImage(image)
+		raw = love.image.newImageData(image)
+		image = love.graphics.newImage(raw)
 	end
-	local raw = image:getData()
 	raw:mapPixel(
 		function(x, y, r, g, b, a)
 			if a < 128 or r + g + b <= 382 then
@@ -300,11 +337,13 @@ function vpet:load1bitImage(image)
 	return love.graphics.newImage(raw)
 end
 
-function vpet:loadforvram(image, lcd)
+--FIXME: DELETEME:
+function vpet:loadforvram_OLD(image, lcd)
+	local raw
 	if type(image) == 'string' then
-		image = love.graphics.newImage(image)
+		raw = love.image.newImageData(image)
+		image = love.graphics.newImage(raw)
 	end
-	local raw = image:getData()
 	raw:mapPixel(
 		function(x, y, r, g, b, a)
 			if a < 128 then
@@ -317,6 +356,7 @@ function vpet:loadforvram(image, lcd)
 	)
 	return love.graphics.newImage(raw)
 end
+
 
 function vpet:loadscript(script, env)
 	local _LuaBCHeader = string.char(0x1B)..'LJ'
@@ -443,7 +483,7 @@ function vpet:loadHW(file, dir)
 	local id = dir .. file
 	local file
 
-	print('Loading Hardware from ' .. id)
+	if vpet.const.verbose then print('Loading Hardware from ' .. id) end
 
 	local function finish(...)
 		local s = 'Hardware ' .. id
@@ -459,7 +499,7 @@ function vpet:loadHW(file, dir)
 		if hw_warnings > 0 then
 			s = s .. ' ('..hw_warnings..' warnings)'
 		end
-		print(s)
+		if vpet.const.verbose then print(s) end
 		return ...
 	end
 
@@ -534,11 +574,13 @@ function vpet:loadHW(file, dir)
 
 	if hw.info then
 		loaded.info = {}
+
 		if type(hw.info.name) == 'string' then
 			loaded.info.name = hw.info.name
 		else
 			loaded.info.name = uuid()
 		end
+
 		if type(hw.info.version) == 'table' then
 			loaded.info.version = {}
 			for i = 1, 3 do
@@ -547,12 +589,31 @@ function vpet:loadHW(file, dir)
 		else
 			loaded.info.version = {0, 0, 0}
 		end
+
+		if type(hw.info.VVpetVersion) == 'table' then
+			loaded.info.VVpetVersion = {}
+			for i = 1, 3 do
+				loaded.info.VVpetVersion[i] = hw.info.VVpetVersion[i] or 0
+			end
+		else
+			loaded.info.VVpetVersion = {0, 0, 0}
+		end
+
 		id = loaded.info.name or id
 	else
 		loaded.info = {
 			name = uuid(),
 			version = {0, 0, 0},
+			VVpetVersion = {0, 0, 0},
 		}
+	end
+
+	local function loadColor(color)
+		if loaded.info.VVpetVersion[1] == 0 then
+			return {color[1] / 0xff, color[2] / 0xff, color[3] / 0xff}
+		else
+			return color
+		end
 	end
 
 	if hw.base then
@@ -622,9 +683,12 @@ function vpet:loadHW(file, dir)
 						unit.default = true
 					end
 					unit.defaultdotmatrix = false
-					unit.bgcolor = o.bgcolor
-					unit.colors = o.colors
-					if unit.colors then
+					unit.bgcolor = loadColor(o.bgcolor)
+					if o.colors then
+						unit.colors = {}
+						for colorIndex, currentColor in pairs(o.colors) do
+							unit.colors[colorIndex] = loadColor(currentColor)
+						end
 						unit.colornames = o.colornames or {}
 						function unit:getColorRGB(index)
 							local color = self.colors[index] or self.colors[self.colornames[index]]
@@ -672,7 +736,7 @@ function vpet:loadHW(file, dir)
 						love.graphics.rectangle('fill', 0, 0, unit.w, unit.h)
 					end)
 					unit.shadowCanvasFront:renderTo(function()
-						love.graphics.clear({0, 0, 0, 0})
+						love.graphics.clear{0, 0, 0, 0}
 						love.graphics.draw(unit.screenCanvas)
 						love.graphics.draw(unit.shadowCanvasBack)
 					end)

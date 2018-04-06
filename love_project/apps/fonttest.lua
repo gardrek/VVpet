@@ -46,10 +46,10 @@ local menu = {
 }
 
 function game:update(dt)
-	if vpet.btn('up') then y = y - dt * speed end
-	if vpet.btn('down') then y = y + dt * speed end
-	if vpet.btn('left') then x = x - dt * speed end
-	if vpet.btn('right') then x = x + dt * speed end
+	if hw.btn('up') then y = y - dt * speed end
+	if hw.btn('down') then y = y + dt * speed end
+	if hw.btn('left') then x = x - dt * speed end
+	if hw.btn('right') then x = x + dt * speed end
 end
 
 function game:draw()

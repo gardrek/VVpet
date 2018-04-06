@@ -12,7 +12,7 @@ hwapi = {}
 --dofile('lib/noglobals.lua')
 -- TODO: should it also cause an error on _access_ of unassigned globals?
 
--- this global controls whether you can set globals with a simple assignment
+-- this global can turn the effects of noglobals off
 --rawset(_G, '_ALLOWGLOBALS', true)
 
 function love.run()
@@ -69,10 +69,10 @@ function love.load(arg)
 
 	-- Love set-up stuff
 	io.stdout:setvbuf('no') -- enable normal use of the print() command
-	love.graphics.setDefaultFilter('linear', 'nearest', 0) -- Pixel scaling
+	love.graphics.setDefaultFilter('nearest', 'nearest') -- Pixel scaling
 
 	local config = vpet:loadscript('vpet-config.lua', {})
-	if config then config = config() else config = {} end
+	if config then config = config() else error'Config file not found. You may need to reinstall...' end
 
 	emu.mouse.last_x, emu.mouse.last_y = love.mouse.getPosition()
 	emu.mouse.x, emu.mouse.y = love.mouse.getPosition()
@@ -94,7 +94,8 @@ function love.load(arg)
 	else
 		local img = love.graphics.newCanvas()
 		img:renderTo(function()
-			love.graphics.clear(0x33, 0x33, 0x33)
+			local grey = 0x33 / 0xff
+			love.graphics.clear{grey, grey, grey}
 		end)
 		emu.bg.image = love.graphics.newImage(img:newImageData())
 		print('Background image ' .. emu.bg.imagefile .. ' not found.')
@@ -149,10 +150,9 @@ function love.load(arg)
 		-- Functions and variables
 		--'collectgarbage', 'dofile', '_G', 'getfenv', 'load', 'loadfile',
 		--'loadstring', 'setfenv', 'rawequal', 'rawget', 'rawset',
-		'assert', 'error', 'getmetatable', 'ipairs',
-		'next', 'pairs', 'pcall', 'print',
-		'select', 'setmetatable', 'tonumber', 'tostring',
-		'type', 'unpack', '_VERSION', 'xpcall',
+		'assert', 'error', 'pcall', 'xpcall', 'getmetatable', 'setmetatable',
+		'next', 'pairs', 'ipairs', 'print', '_VERSION',
+		'select', 'unpack', 'type', 'tonumber', 'tostring',
 		-- Libraries
 		'math', 'table', 'string', 'bit'
 	}
@@ -160,20 +160,30 @@ function love.load(arg)
 	-- Fallback colors, for finding the closest color to common color names
 	vpet.fallbackcolors = {
 		-- 1-bit RGB
-		Black = {0x00, 0x00, 0x00},
-		Blue = {0x00, 0x00, 0xff},
-		Green = {0x00, 0xff, 0x00},
-		Cyan = {0x00, 0xff, 0xff},
-		Red = {0xff, 0x00, 0x00},
-		Magenta = {0xff, 0x00, 0xff},
-		Yellow = {0xff, 0xff, 0x00},
-		White = {0xff, 0xff, 0xff},
+		Black    = {0x00, 0x00, 0x00},
+		Blue     = {0x00, 0x00, 0xff},
+		Green    = {0x00, 0xff, 0x00},
+		Cyan     = {0x00, 0xff, 0xff},
+		Red      = {0xff, 0x00, 0x00},
+		Magenta  = {0xff, 0x00, 0xff},
+		Yellow   = {0xff, 0xff, 0x00},
+		White    = {0xff, 0xff, 0xff},
 		-- Extra common colors
-		Gray = {0x7f, 0x7f, 0x7f},
-		Grey = {0x7f, 0x7f, 0x7f},
-		Orange = {0xff, 0x7f, 0x00},
-		Pink = {0xff, 0x00, 0x7f},
+		Gray     = {0x7f, 0x7f, 0x7f},
+		Grey     = {0x7f, 0x7f, 0x7f},
+		Orange   = {0xff, 0x7f, 0x00},
+		Pink     = {0xff, 0x00, 0x7f},
 	}
+
+	for index, color in pairs(vpet.fallbackcolors) do
+		if type(color) == 'table' then
+			--vpet.fallbackcolors[index] = color:dup() / 0xff
+			for i = 1, 3 do
+				vpet.fallbackcolors[index][i] = vpet.fallbackcolors[index][i] / 0xff
+			end
+		end
+	end
+
 
 	local _usedfallbackcolor = {}
 	vpet.usedfallbackcolor = function(index)
@@ -191,6 +201,8 @@ function love.load(arg)
 	vpet.hw, err = vpet:loadHW('vpet64.lua')
 	--vpet.hw, err = vpet:loadHW('vpet64icon.lua')
 	--vpet.hw, err = vpet:loadHW('vv8.lua')
+	--vpet.hw, err = vpet:loadHW('vv16.lua')
+	--vpet.hw, err = vpet:loadHW('grey8.lua')
 	--vpet.hw, err = vpet:loadHW('space.lua')
 	--vpet.hw, err = vpet:loadHW('actionpet.lua')
 
@@ -222,6 +234,8 @@ function love.load(arg)
 
 	--vpet.appdir, appname = 'hw/space/apps/', 'shooter' -- FIXME:HAXXXX
 	vpet.appdir, appname = 'rom/', 'applist' -- FIXME:HAXXXX
+	--appname = 'bigfont'
+	--appname = 'raycast'
 
 	vpet.cansub = true
 	local ok, err = api.os.subapp(appname, true)
@@ -304,13 +318,13 @@ function love.update(dt)
 					unit.frametime = unit.frametime % 0.016
 					love.graphics.setColor(vpet.const.imageColor)
 					unit.shadowCanvasFront:renderTo(function()
-						love.graphics.clear({0, 0, 0, 0})
+						love.graphics.clear{0, 0, 0, 0}
 						love.graphics.draw(unit.screenCanvas)
 						love.graphics.draw(unit.shadowCanvasBack)
 					end)
 					unit.shadowCanvasBack:renderTo(function()
 						--if unit.ghosting then love.graphics.setColor({0xff, 0xff, 0xff, unit.ghosting}) end
-						love.graphics.setColor({0xff, 0xff, 0xff, vpet.const.ghosting})
+						love.graphics.setColor{1, 1, 1, vpet.const.ghosting}
 						love.graphics.draw(unit.screenCanvas)
 					end)
 				--end
@@ -494,11 +508,27 @@ function love.draw()
 			love.graphics.print(name, v.x1 + 2, v.y1 + 2)
 		end
 
+		---[[
+		local x, y, w, h, index, t
+		h = love.graphics.getHeight() / 20
+		w = h
+		x = love.graphics.getWidth() - w
+		if vpet.hw then
+			t = vpet.hw.output.defaultlcd.colors
+			for index = 0, #t do
+				color = t[index]
+				love.graphics.setColor(color)
+				y = index * h
+				love.graphics.rectangle('fill', x, y, w, h)
+			end
+		end
+		--]]
+
 		--[[
 		local x, y, w, h, index
 		h = love.graphics.getHeight() / 20
 		w = h
-		x = love.graphics.getWidth() - w
+		x = love.graphics.getWidth() - w * 2
 		index = 1
 		for name, color in pairs(vpet.fallbackcolors) do
 			love.graphics.setColor(color)

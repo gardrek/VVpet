@@ -64,10 +64,10 @@ function game:draw()
 end
 
 function game:update(dt)
-	if vpet.btn('down') then
+	if hw.btn('down') then
 		offset = offset - dt * 15
 	end
-	if vpet.btn('up') then
+	if hw.btn('up') then
 		offset = offset + dt * 15
 	end
 end

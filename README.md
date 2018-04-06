@@ -6,8 +6,10 @@
 
 VVpet is a system for making and playing virtual LCD games. VVpet is not just one fantasy console, but more like a set of related fantasy consoles. It also allows one to easily make their own fantasy consoles, as well as games for those consoles.
 
+**Please note: VVpet has been updated to LÖVE 11.0, so please download the latest 11.0 release to use it. It will no longer run on LÖVE 0.10 releases.**
+
 ## Getting Started
-VVpet is made with Löve 0.10.2, so you will need that to run it. Once you have love, simply run love with the project folder as the game, for example: in a terminal, run `love love_project/`; or, in a gui, drag the folder to the Löve executable.
+VVpet is made with Löve 11.0, so you will need that to run it. Once you have love, simply run love with the project folder as the game, for example: in a terminal, run `love love_project/`; or, in a gui, drag the folder to the Löve executable.
 
 ## Interface
 VVpet is an emulator for virtual pets that never existed. VVpet is not just one fantasy console, but rather a set of related fantasy consoles and tools to create your own. VVpet comes with the vPET series of virtual consoles, including flagship vPET64, the main console which the others are each a variation of.
@@ -41,7 +43,7 @@ Your application should have a unique name, and the location of the main script 
 
 `$NAME/app.lua`
 
-Any pages must be in the same folder as the main script. In order for your app to show up in the app list, it shoudl be in the `apps/` folder.
+Any pages must be in the same folder as the main script. In order for your app to show up in the app list, it should be in the `apps/` folder.
 
 ## Callbacks
 
@@ -49,7 +51,7 @@ Instead of using global space, as is more typical of fantasy consoles, callbacks
 
 Each application's Lua script returns a table with the callback functions included as methods.
 
-Below is a small sample program illustrating this. Note the `table:method` syntax, which implies the `self` variable/argument.
+Below is a small sample program illustrating this. Note the syntax with a colon, i.e: `table:method`, which implies the `self` argument.
 
     local game = {}
 
@@ -71,24 +73,25 @@ Below is a small sample program illustrating this. Note the `table:method` synta
 
     return game
 
-The following are the available callback functions: `draw()`, `update(dt)`, `event(type, data)`, `quit()`
+The following are the available callback functions:
 
-`update()` is run every 1/60th of a second.
+---
+`tick()` is run every 1/60th of a second.
 
-`draw()` is deprecated, but it runs every 1/60th of a second, right after `update()`
-
+---
 `event(type, data)` is called when an event happens. The event types are:
 
 `'button'`
 
-This event is triggered when a button is pressed or released. The data table has the keys is `button`, `up`, and `down`. `button` is one of the button strings: `'back'`, `'home'`, `'1'`, `'a'`, `'left'` etc. `'up` and `'down'` are booleans, giving whether the button is up or down. `'up'` is always the opposite of `'down'`.
+This event is triggered when a button is pressed or released. The `data` table has the keys is `button`, `up`, and `down`. `button` is one of the button strings: `'back'`, `'home'`, `'1'`, `'a'`, `'left'` etc. `'up'` and `'down'` are booleans, giving whether the button is up or down. `up` is always the opposite of `down`.
 
 `'quit'`
 
-This event is triggered when the app stops running. The data structure is empty in the current version
+This event is triggered when the app stops running. The `data` table is empty in the current version
 
 These are also subject to change.
 
+---
 `quit()` is called when the app finishes running.
 
 When an app exits, the following happens, in this order:
@@ -165,7 +168,7 @@ Draws a line from point `x0, y0` to point `x1, y1`.
 ---
 `os.subapp(appname, cansub)`
 
-Runs another app, suspending the running app. `appname` is the name of the app, not the file, so if your app is `'game.lua'` or `'game/app.lua'` then `appname` would be `'game'`.
+Runs another app, suspending the running app. `appname` is the name of the app, not the file, so if your app is `'game.lua'` or `'game/app.lua'` then `appname` would be `'game'`. If `cansub` is true, then the app can, in turn, run other apps.
 
 ---
 `os.quit()`
@@ -173,12 +176,12 @@ Runs another app, suspending the running app. `appname` is the name of the app, 
 Exits the app, returning to the calling app, if there is one. See above for what happens when an app exits.
 
 ---
-The following commands will be depecated when the hw API is more mature:
-
----
 `hw.btn(button)`
 
 Returns a boolean representing whether the given button is held, or nil if the button does not exist.
+
+
+## Deprecated stuff
 
 ---
 `vpet.led(on)`

@@ -32,7 +32,7 @@ function love.conf(t)
 	t.modules.sound = true              -- Enable the sound module (boolean)
 	t.modules.system = true             -- Enable the system module (boolean)
 	t.modules.timer = true              -- Enable the timer module (boolean), Disabling it will result 0 delta time in love.update
-	t.modules.touch = false             -- Enable the touch module (boolean)
+	t.modules.touch = true              -- Enable the touch module (boolean)
 	t.modules.video = false             -- Enable the video module (boolean)
 	t.modules.window = true             -- Enable the window module (boolean)
 	t.modules.thread = false            -- Enable the thread module (boolean)

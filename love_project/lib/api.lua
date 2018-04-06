@@ -139,28 +139,27 @@ function api.os.subapp(appname, cansub)
 			vpet.cansub = old_cansub
 			return false, appstate.app
 		end
-		if not appstate.app.callback then
-			function appstate.app:callback(func, ...)
-				if type(self[func]) == 'function' then
-					local ok, err = pcall(self[func], self, ...)
-					if not ok then
-						print(err)
-						vpet:terminate()
-					end
-				end
-			end
-		end
 		if type(appstate.app) ~= 'table' then
 			vpet.appstack:pop(appstate)
 			vpet.cansub = old_cansub
 			return false, 'app returned ' .. type(appstate.app) .. ' instead of table'
 		else
+			if not appstate.app.callback then
+				function appstate.app:callback(func, ...)
+					if type(self[func]) == 'function' then
+						local ok, err = pcall(self[func], self, ...)
+						if not ok then
+							error(err, 2)--print(err)
+							vpet:terminate()
+						end
+					end
+				end
+			end
+			appstate.app:callback('init')
 			if not appstate.vram[1] then
 				appstate.vram[1] = vpet:newpage()
+				api.draw.setSrc(1, 'app')
 			end
-			api.draw.setSrc(0, 'screen')
-			api.draw.setSrc(1, 'app')
-			api.draw.setColor(1, 0)
 			return true
 		end
 	else
@@ -448,9 +447,11 @@ end
 --]]
 
 -- FIXME: this is only for Backwards compatibility
+--[[
 api.vpet.listapps = api.os.listapps
 api.vpet.quit = api.os.quit
 api.vpet.subapp = api.os.subapp
 api.vpet.btn = api.hw.btn
+--]]
 
 return api

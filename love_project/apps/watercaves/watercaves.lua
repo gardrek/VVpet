@@ -32,7 +32,7 @@
 --miyamoto, its good enough for
 --me!
 
--- Ported by Gardrek to VVpet
+-- Ported to VVpet by Gardrek
 local game = {}
 
 function lerp(a, b, t) return (1 - t) * a + t * b end
@@ -466,8 +466,8 @@ function game:update(dt)
 	map:set(31, 1, TILE.WATER)
 	map:set(0, 1, TILE.WATER)
 
-	--map.x = lerp(map.x, 28 - (p1.x + p1.dx * 16), dt * 4)
-	--map.y = lerp(map.y, 28 - (p1.y + p1.dy * 16), dt * 8)
+	map.x = lerp(map.x, 28 - (p1.x + p1.dx * 16), dt * 4)
+	map.y = lerp(map.y, 28 - (p1.y + p1.dy * 16), dt * 8)
 
 	frametime = frametime + dt
 end

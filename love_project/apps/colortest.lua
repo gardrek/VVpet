@@ -51,7 +51,7 @@ function game:draw()
 	draw.setColor(nil, bgc)
 	draw.cls()
 	for i, v in ipairs(colors) do
-		if vpet.btn('2') then
+		if hw.btn('2') then
 			draw.setColor(bgc, v)
 		else
 			draw.setColor(v, bgc)
