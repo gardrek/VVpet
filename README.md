@@ -9,7 +9,7 @@ VVpet is a system for making and playing virtual LCD games. VVpet is not just on
 **Please note: VVpet has been updated to LÖVE 11.0, so please download the latest 11.0 release to use it. It will no longer run on LÖVE 0.10 releases.**
 
 ## Getting Started
-VVpet is made with Löve 11.0, so you will need that to run it. Once you have love, simply run love with the project folder as the game, for example: in a terminal, run `love love_project/`; or, in a gui, drag the folder to the Löve executable.
+VVpet is made with LÖVE 11.0, so you will need that to run it. Once you have LÖVE, simply run `love` with the project folder as the game, for example: in a terminal, run `love love_project/`; or, in a gui, drag the folder to the LÖVE executable.
 
 ## Interface
 VVpet is an emulator for virtual pets that never existed. VVpet is not just one fantasy console, but rather a set of related fantasy consoles and tools to create your own. VVpet comes with the vPET series of virtual consoles, including flagship vPET64, the main console which the others are each a variation of.
