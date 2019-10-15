@@ -200,6 +200,7 @@ camera = {
 
 function drawvline(x, y1, y2)
 	draw.rect(x, y1, 1, y2 - y1 + 1)
+	--draw.line(x, y1, x, y2)
 	--[[
 	local step = (y2 - y1) / 4
 	local c = draw.getColor()

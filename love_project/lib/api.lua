@@ -358,8 +358,10 @@ function api.draw.line(x0, y0, x1, y1)
 	local sy = y0 < y1 and 1 or -1
 	local err = math.floor((dx > dy and dx or -dy) / 2)
 	local e2 = 0
+	local points = {}
 	while true do
-		api.draw.pix(x0, y0)
+		points[#points + 1] = x0
+		points[#points + 1] = y0 + 1 -- UPSTREAM: LOVE2D has an off-by-one error to account for here
 		if x0 == x1 and y0 == y1 then break end
 		e2 = err
 		if e2 >= -dx then
@@ -371,6 +373,9 @@ function api.draw.line(x0, y0, x1, y1)
 			y0 = y0 + sy
 		end
 	end
+	vpet.appstack:peek().dest:renderTo(function()
+		love.graphics.points(points)
+	end)
 end
 
 --[[
