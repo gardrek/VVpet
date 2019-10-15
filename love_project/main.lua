@@ -198,13 +198,13 @@ function love.load(arg)
 	---[[
 	local err
 	--vpet.hw, err = vpet:loadHW('bad.lua')
-	--vpet.hw, err = vpet:loadHW('vpet64.lua')
+	vpet.hw, err = vpet:loadHW('vpet64.lua')
 	--vpet.hw, err = vpet:loadHW('vpet64icon.lua')
 	--vpet.hw, err = vpet:loadHW('vv8.lua')
 	--vpet.hw, err = vpet:loadHW('vv16.lua')
 	--vpet.hw, err = vpet:loadHW('grey8.lua')
 	--vpet.hw, err = vpet:loadHW('space.lua')
-	vpet.hw, err = vpet:loadHW('actionpet.lua')
+	--vpet.hw, err = vpet:loadHW('actionpet.lua')
 
 	--DEBUG_PRINT_TABLE(vpet.hw)
 
