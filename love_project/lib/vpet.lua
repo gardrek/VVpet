@@ -419,6 +419,7 @@ function vpet:appinfo(file)
 	-- now, appname is the name, without any extension, ext is empty if there is no extension
 	local isapp
 	local appfile, datadir
+	local fileinfo
 	if love.filesystem.getInfo(file) ~= nil then
 		if ext == '' then
 			if love.filesystem.getInfo(file).type == "directory" then
