@@ -8,6 +8,7 @@ local h = 64
 local w = 64
 
 function game:draw()
+	draw.setSrc(1, 'app')
 	draw.cls(bgcolor)
 	--vpet.rect(0, 16, false, false, bgcolor)
 	n = n + 1
@@ -20,7 +21,7 @@ function game:draw()
 	--pix(math.floor(n / 16) % 10, 0, 1)
 	---[[
 	for iii, vvv in ipairs{'left', 'up', 'down', 'right', 'back', 'home', '1', '2', '3'} do
-		if vpet.btn(vvv) then
+		if hw.btn(vvv) then
 			draw.setColor(1)
 			draw.pix(iii, 0)
 		else

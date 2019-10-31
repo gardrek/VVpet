@@ -232,9 +232,9 @@ function game:tick()
 	draw.cls()
 	--map:drawMini(32 - map.w / 2, 32 - map.h / 2)
 	--map:drawMini(0, 0, 2)
-	draw.setColor(7)
+	draw.setColor(0)
 	draw.rect(0, 0, screen.w, screen.h / 2)
-	draw.setColor(15)
+	draw.setColor(1)
 	draw.rect(0, screen.h / 2, screen.w, screen.h / 2)
 	for xi = 0, screen.w - 1 do
 		-- calculate ray position and direction
@@ -335,7 +335,7 @@ function game:tick()
 		]]
 
 		local color = map[tile.y][tile.x] - 1
-		draw.setColor(color + side * 8)
+		draw.setColor(1) --(color + side * 8)
 		--draw.setColor(math.random(0,15))
 
 		--[[

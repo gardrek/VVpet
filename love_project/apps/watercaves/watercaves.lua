@@ -363,7 +363,7 @@ function game:update(dt)
 	--if on the ground and the
 	--user presses 2 or up...
 	-- FIXME: change this to be when pressed down, not while held
-	if (vpet.btn('up') or vpet.btn('2')) and p1.isgrounded then
+	if (hw.btn('up') or hw.btn('2')) and p1.isgrounded then
 		--launch the player upwards
 		p1.dy = -p1.jumpvel
 	end
@@ -372,10 +372,10 @@ function game:update(dt)
 	--
 
 	p1.dx = 0
-	if vpet.btn('left') then --left
+	if hw.btn('left') then --left
 		p1.dx = -1
 	end
-	if vpet.btn('right') then --right
+	if hw.btn('right') then --right
 		p1.dx = 1
 	end
 

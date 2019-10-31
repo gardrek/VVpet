@@ -54,7 +54,9 @@ function egg:gen()
 end
 
 function egg:init()
-	self.stripe = {}
+	draw.setSrc(vpet.loadpage('egg.png'), 'app')
+	draw.setColor('White', 'Black')
+    self.stripe = {}
 	self.spot = {}
 	for i = 0, 3 do
 		local has_stripe = bit.rshift(self.seed[1], i * 2) % 2 == 1
