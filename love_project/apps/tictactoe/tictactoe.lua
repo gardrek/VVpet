@@ -27,6 +27,7 @@ local drawcursor = false
 local cursor_blink = 0
 
 function game:draw()
+	draw.setSrc(1, 'app')
 	draw.cls(0)
 	drawspriteblock(2 * to_move + 11, 0, 2, 2, board.x - 4, board.y - 12)
 	drawspriteblock(9, 5, 2, 7, board.x + 8, board.y - 12)
