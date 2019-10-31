@@ -89,7 +89,7 @@ function love.load(arg)
 	}
 	emu.guiButtons = {}
 
-	if love.filesystem.exists(emu.bg.imagefile) then
+	if love.filesystem.getInfo(emu.bg.imagefile) ~= nil then
 		emu.bg.image = love.graphics.newImage(emu.bg.imagefile)
 	else
 		local img = love.graphics.newCanvas()

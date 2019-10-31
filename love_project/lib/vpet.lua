@@ -360,7 +360,7 @@ end
 
 function vpet:loadscript(script, env)
 	local _LuaBCHeader = string.char(0x1B)..'LJ'
-	local exists = love.filesystem.exists(script)
+	local exists = love.filesystem.getInfo(script) ~= nil
 	if exists then
 		if love.filesystem.read(script, 3) == _LuaBCHeader then
 			print('Bytecode is not allowed.')
@@ -406,7 +406,7 @@ function vpet:loadapp(appname, dir)
 end
 
 function vpet:appinfo(file)
-	if not love.filesystem.exists(file) then return false end
+	if love.filesystem.getInfo(file) == nil then return false end
 	-- this match gives the directory, the filename, and the ext if it exists, or the filename again if not
 	local dir, filename, ext = file:match("(.-)([^\\/]-%.?([^%.\\/]*))$")
 	local appname
@@ -419,14 +419,16 @@ function vpet:appinfo(file)
 	-- now, appname is the name, without any extension, ext is empty if there is no extension
 	local isapp
 	local appfile, datadir
-	if love.filesystem.exists(file) then
+	if love.filesystem.getInfo(file) ~= nil then
 		if ext == '' then
-			if love.filesystem.isDirectory(file) then
+			if love.filesystem.getInfo(file).type == "directory" then
 				datadir = dir..filename..'/'
 				appfile = datadir..filename..'.lua'
-				if not love.filesystem.isFile(appfile) then
+                fileinfo = love.filesystem.getInfo(appfile)
+				if fileinfo == nil or fileinfo.type ~= "file" then
 					appfile = datadir..'app.lua'
-					if not love.filesystem.isFile(appfile) then
+                    fileinfo = love.filesystem.getInfo(appfile)
+					if fileinfo == nil or fileinfo.type ~= "file" then
 						appfile = nil
 					end
 				end
@@ -435,7 +437,8 @@ function vpet:appinfo(file)
 				end
 			end
 		elseif ext:lower() == 'lua' then
-			if love.filesystem.isFile(file) then
+			fileinfo = love.filesystem.getInfo(file)
+			if fileinfo.type == "file" then
 				datadir = dir
 				appfile = file
 				isapp = true
@@ -520,7 +523,7 @@ function vpet:loadHW(file, dir)
 			for i, v in ipairs(source) do
 				if type(v) == 'string' then
 					file = dir..v
-					if love.filesystem.isFile(file) then
+					if love.filesystem.getInfo(file).type == "file" then
 						dest[i] = love.graphics.newImage(file)
 					else
 						print('hardware '..id..': '..errormessage..' image "'..file..'" not a file')
@@ -537,7 +540,7 @@ function vpet:loadHW(file, dir)
 				if type(v) == 'string' then
 					if source[v] then
 						file = dir..source[v]
-						if love.filesystem.isFile(file) then
+						if love.filesystem.getInfo(file).type == "file" then
 							dest[v] = love.graphics.newImage(file)
 						else
 							print('hardware '..id..': '..errormessage..' image "'..file..'" not a file')
@@ -638,7 +641,7 @@ function vpet:loadHW(file, dir)
 		loaded.base.minh = loaded.base.minh or loaded.base.h
 
 		file = dir .. hw.base.image
-		if love.filesystem.isFile(file) then
+		if love.filesystem.getInfo(file).type == "file" then
 			loaded.base.image = love.graphics.newImage(file)
 			if hw.base.image_linear_filter then
 				loaded.base.image_linear_filter = true
@@ -717,7 +720,7 @@ function vpet:loadHW(file, dir)
 						unit.vram.defaultpage = unit.vram[#unit.vram]
 					end
 					unit.vram.font = love.graphics.newCanvas(unit.vram.w, unit.vram.h)
-					if type(o.vram.font) == 'string' and love.filesystem.exists(dir .. o.vram.font) then
+					if type(o.vram.font) == 'string' and love.filesystem.getInfo(dir .. o.vram.font) ~= nil then
 						local image = vpet:load1bitImage(dir .. o.vram.font)
 						love.graphics.setColor(vpet.const.imageColor)
 						unit.vram.font:renderTo(function()
