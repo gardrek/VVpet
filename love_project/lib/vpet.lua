@@ -425,10 +425,10 @@ function vpet:appinfo(file)
 			if love.filesystem.getInfo(file).type == "directory" then
 				datadir = dir..filename..'/'
 				appfile = datadir..filename..'.lua'
-                fileinfo = love.filesystem.getInfo(appfile)
+				fileinfo = love.filesystem.getInfo(appfile)
 				if fileinfo == nil or fileinfo.type ~= "file" then
 					appfile = datadir..'app.lua'
-                    fileinfo = love.filesystem.getInfo(appfile)
+					fileinfo = love.filesystem.getInfo(appfile)
 					if fileinfo == nil or fileinfo.type ~= "file" then
 						appfile = nil
 					end
