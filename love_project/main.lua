@@ -6,6 +6,7 @@ emu.mouse = {}
 vpet = require('lib/vpet')
 api = require('lib/api')
 hwapi = {}
+ghosting_enabled = true
 
 -- this stops you from (accidentally) assigning new globals after this point
 -- you can still use rawset, tho
@@ -16,6 +17,8 @@ hwapi = {}
 --rawset(_G, '_ALLOWGLOBALS', true)
 
 function love.run()
+	if not love.filesystem.createDirectory'apps' then print'warning: app folder NOT created' end
+
 	local TICKRATE = 1 / 60
 
 	if love.math then
@@ -188,7 +191,7 @@ function love.load(arg)
 	local _usedfallbackcolor = {}
 	vpet.usedfallbackcolor = function(index)
 		if not _usedfallbackcolor[index] then
-			print('Using fallback color "' .. index .. '".')
+			--~ print('Using fallback color "' .. index .. '".')
 			_usedfallbackcolor[index] = true
 		end
 	end
@@ -197,14 +200,14 @@ function love.load(arg)
 
 	---[[
 	local err
-	--vpet.hw, err = vpet:loadHW('bad.lua')
+	--~ vpet.hw, err = vpet:loadHW('bad.lua')
 	vpet.hw, err = vpet:loadHW('vpet64.lua')
-	--vpet.hw, err = vpet:loadHW('vpet64icon.lua')
-	--vpet.hw, err = vpet:loadHW('vv8.lua')
-	--vpet.hw, err = vpet:loadHW('vv16.lua')
-	--vpet.hw, err = vpet:loadHW('grey8.lua')
-	--vpet.hw, err = vpet:loadHW('space.lua')
-	--vpet.hw, err = vpet:loadHW('actionpet.lua')
+	--~ vpet.hw, err = vpet:loadHW('vpet64icon.lua')
+	--~ vpet.hw, err = vpet:loadHW('vv8.lua')
+	--~ vpet.hw, err = vpet:loadHW('vv16.lua')
+	--~ vpet.hw, err = vpet:loadHW('grey8.lua')
+	--~ vpet.hw, err = vpet:loadHW('space.lua')
+	--~ vpet.hw, err = vpet:loadHW('actionpet.lua')
 
 	--DEBUG_PRINT_TABLE(vpet.hw)
 
@@ -232,18 +235,38 @@ function love.load(arg)
 	--appname = 'shooter'
 	--appname = 'watercaves'
 
-	--vpet.appdir, appname = 'hw/space/apps/', 'shooter' -- FIXME:HAXXXX
-	vpet.appdir, appname = 'rom/', 'applist' -- FIXME:HAXXXX
-	--appname = 'bigfont'
-	--appname = 'raycast'
+	local cart
+	local cwd
+	for i, v in ipairs(arg) do
+		if cart == true then
+			cart = v
+		elseif not cart then
+			if v == "--cart" then
+				cart = true
+				cwd = love.filesystem.getWorkingDirectory()
+			end
+		end
+	end
 
-	vpet.cansub = true
-	local ok, err = api.os.subapp(appname, true)
-	if not ok then error(err) end
-	vpet.appdir = nil -- FIXME:HAXXXX
 
-	vpet.running = true
-	--]]
+	if type(cart) == "string" then
+		vpet.appdir, appname = cwd .. '/', cart
+		
+	else
+		--vpet.appdir, appname = 'hw/space/apps/', 'shooter' -- FIXME:HAXXXX
+		vpet.appdir, appname = 'rom/', 'applist' -- FIXME:HAXXXX
+		--appname = 'bigfont'
+		--appname = 'raycast'
+
+		end
+
+		vpet.cansub = true
+		local ok, err = api.os.subapp(appname, true)
+		if not ok then error(err) end
+		vpet.appdir = nil -- FIXME:HAXXXX
+
+		vpet.running = true
+		--]]
 
 	---[[
 	local hwnames = {
@@ -313,7 +336,8 @@ function love.update(dt)
 	if vpet.hw and vpet.hw.output then
 		for index, unit in ipairs(vpet.hw.output) do
 			if unit.type == 'lcd' then
-				unit.frametime = unit.frametime + dt
+				if ghosting_enabled then
+					unit.frametime = unit.frametime + dt
 				--if unit.frametime >= 0.016 then
 					unit.frametime = unit.frametime % 0.016
 					love.graphics.setColor(vpet.const.imageColor)
@@ -328,6 +352,22 @@ function love.update(dt)
 						love.graphics.draw(unit.screenCanvas)
 					end)
 				--end
+				else
+					unit.shadowCanvasFront:renderTo(function()
+						--~ love.graphics.setColor(unit.bgcolor)
+						--~ love.graphics.rectangle('fill', 0, 0, unit.w, unit.h)
+						--~ love.graphics.draw(unit.screenCanvas)
+						love.graphics.setColor{1, 1, 1, 1}
+						love.graphics.draw(unit.shadowCanvasBack)
+					end)
+					unit.shadowCanvasBack:renderTo(function()
+						love.graphics.setColor(unit.bgcolor)
+						love.graphics.rectangle('fill', 0, 0, unit.w, unit.h)
+						love.graphics.setColor{1, 1, 1, 1}
+						--~ love.graphics.setColor{0xff, 0xff, 0xff, 0xff}
+						love.graphics.draw(unit.screenCanvas)
+					end)
+				end
 			end
 		end
 	end
@@ -544,6 +584,8 @@ function love.keypressed(key, scancode, isrepeat)
 	if not isrepeat then
 		if key == 'f7' then
 			vpet.const.debug = not vpet.const.debug
+		elseif key == 'f8' then
+			ghosting_enabled = not ghosting_enabled
 		elseif key == 'f2' then
 			local appname = 'applist'
 			vpet.appdir = 'rom/' -- FIXME:HAXXXX

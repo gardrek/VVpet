@@ -401,7 +401,7 @@ function vpet:loadapp(appname, dir)
 		if not app then return false, err end
 		return app, appinfo.dir
 	else
-		print('App '..appname..' not found in '..dir)
+		error('App '..appname..' not found in '..dir)
 	end
 end
 

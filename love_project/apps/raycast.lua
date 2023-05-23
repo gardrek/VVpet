@@ -199,14 +199,15 @@ camera = {
 }
 
 function drawvline(x, y1, y2)
-	draw.rect(x, y1, 1, y2 - y1 + 1)
-	--[[
+	--~ draw.rect(x, y1, 1, y2 - y1 + 1)
+	--~ --[[
 	local step = (y2 - y1) / 4
 	local c = draw.getColor()
 	local qqq = 0
 	for yi = y1, y2, step do
 		--draw.setColor(math.floor((yi + c) % 6) + 2)
-		draw.setColor((qqq + c)%16)
+		local index = (qqq + c) % 16
+		if qqq == 0 then draw.setColor'Yellow' else draw.setColor'Blue' end
 		draw.rect(x, yi, 1, step)
 		qqq = 1 - qqq
 	end

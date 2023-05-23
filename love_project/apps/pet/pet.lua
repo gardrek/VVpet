@@ -55,11 +55,13 @@ end
 
 function egg:init()
 	draw.setSrc(vpet.loadpage('egg.png'), 'app')
-	draw.setColor('White', 'Black')
+	draw.setColor('White', 'White')
     self.stripe = {}
 	self.spot = {}
 	for i = 0, 3 do
 		local has_stripe = bit.rshift(self.seed[1], i * 2) % 2 == 1
+		--~ local has_stripe = true;
+		--~ local has_stripe = false;
 		if has_stripe then
 			self.stripe[i] = bit.rshift(self.seed[1], i * 2 + 1) % 2
 		else
@@ -86,18 +88,44 @@ function egg:draw(x, y, squash)
 		end
 		if self.stripe[i] then
 			off.stripe = self.stripe[i]
+			--~ off.stripe = 0
 			if squash == 1 then
-				draw.blit(12 + 32 * off.stripe, i * 6, 4, 6, x + 14, y + 4 + 6 * i + off.y)
+				draw.blit(12 + 32 * off.stripe, i * 6, 4, 6, x + 15, y + 4 + 6 * i + off.y)
 			end
 			draw.blit(0 + 32 * off.stripe, i * 6, 12, 6, x + 4 + off.x, y + 4 + 6 * i + off.y)
 			draw.blit(16 + 32 * off.stripe, i * 6, 12, 6, x + 16 - off.x, y + 4 + 6 * i + off.y)
 		else
+			--[=[
 			local spot = self.spot[i]
 			if spot.pos == 1 or spot.pos == 2 then off.x = -off.x end
 			draw.blit(spot.pat * 8, 24, 8, 8, x + off.x + math.floor((spot.pos % 3) * 3.5) + 9 --[[+ i % 2]], y + 6 * i + off.y + 4)
 			if spot.pos == 1 or spot.pos == 2 then off.x = -off.x end
 			if spot.pos == 3 then
-				draw.blit(spot.pat * 8, 24, 8, 8, x - off.x + 16 --[[+ i % 2]], y + 6 * i + off.y + 4)
+				draw.blit(spot.pat * 8, 24, 8, 8, x - off.x + 16  --[[+ i % 2]], y + 6 * i + off.y + 5)
+			end
+			]=]
+
+			local spot = self.spot[i]
+			local blit_x = spot.pat * 8
+			--~ local blit_x = 6 * 8
+			--[[
+			local blit_x
+			if spot.pat % 2 == 0 then
+				blit_x = 6 * 8
+			else
+				blit_x = 2 * 8
+			end
+			--~ ]]
+			local base_y = y + 6 * i + off.y
+
+			if spot.pos == 1 or spot.pos == 2 then off.x = -off.x end
+			if spot.pos == 0 or spot.pos == 1 or spot.pos == 3 then
+				draw.blit(blit_x, 24, 8, 8, x + off.x + math.floor((spot.pos % 3) * 3.5) + 9, base_y + 4)
+			end
+			if spot.pos == 1 or spot.pos == 2 then off.x = -off.x end
+			if spot.pos == 3 then blit_x = (spot.pat + 2) % 8 * 8 end
+			if spot.pos == 2 or spot.pos == 3 then
+				draw.blit(blit_x, 24, 8, 8, x - off.x + 16, base_y + 4)
 			end
 		end
 	end
